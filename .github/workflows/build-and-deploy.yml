@@ -33,21 +33,23 @@ jobs:
         echo "${{ secrets.REMOTE_SSH_KEY }}" > ssh_key
         chmod 600 ssh_key
 
-    - name: Determine Deployment Path and Port
+    - name: Determine Deployment Path and Port 
       id: deploy_vars
       run: |
         BRANCH_NAME=${GITHUB_REF#refs/heads/}
-        if [[ "$BRANCH_NAME" =~ ^equipe([0-9]+)$ ]]; then
+        
+        if [[ "$BRANCH_NAME" == "main" ]]; then
+          TEAM_NUMBER=80
+        elif [[ "$BRANCH_NAME" =~ ^equipe([0-9]+)$ ]]; then
           TEAM_NUMBER=${BASH_REMATCH[1]}
-          DEPLOY_PATH="/opt/equipe$TEAM_NUMBER"
-          PORT=$((8000 + TEAM_NUMBER))
-        elif [[ "$BRANCH_NAME" == "main" ]]; then
-          DEPLOY_PATH="/opt/tweetx"
-          PORT=8080
         else
           echo "Branch not supported for deployment"
           exit 1
         fi
+        
+        DEPLOY_PATH="/opt/equipe$TEAM_NUMBER"
+        PORT=$((8000 + TEAM_NUMBER))
+        
         echo "DEPLOY_PATH=$DEPLOY_PATH" >> $GITHUB_ENV
         echo "PORT=$PORT" >> $GITHUB_ENV
         echo "Deploying to $DEPLOY_PATH on port $PORT"
