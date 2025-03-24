@@ -3,8 +3,8 @@ name: Build and Deploy JAR
 on:
   push:
     branches:
-      - main
-      - equipe*
+      - main  # Exécution directe quand on pousse sur main
+  workflow_call:  # Permet d'être appelé par d'autres branches
 
 jobs:
   build:
@@ -13,7 +13,9 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
-    
+      with:
+        ref: main  # Toujours utiliser la version main
+
     - name: Set up JDK 21
       uses: actions/setup-java@v3
       with:
