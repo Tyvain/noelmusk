@@ -8,7 +8,7 @@
 }
 /* Définir la couleur de fond rouge pour les composants Vaadin */
 [theme~="dark"] {
-   --lumo-base-color: red;  
+   --lumo-base-color: rgb(34, 33, 33);  
 }
 
 /* Ajout de styles pour les tableaux */
@@ -16,7 +16,7 @@ table {
   border-collapse: collapse; /* Pour un aspect compact */
   width: 100%; /* Prendre toute la largeur disponible */
   font-family: monospace; /* Utiliser une police monospace */
-  background-color: #1e1e1e; /* Couleur de fond sombre */
+  background-color: #393939; /* Couleur de fond sombre */
   color: #ffffff; /* Couleur du texte */
 }
 
