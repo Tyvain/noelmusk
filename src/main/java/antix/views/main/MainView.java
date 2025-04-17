@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 @PageTitle("main")
 @Route("")
 public class MainView extends VerticalLayout {
-
+    /*Test*/
     private final List<MastodonPost> posts = new ArrayList<>();
     private int currentIndex = 0;
     private final Div contentDiv = new Div();
