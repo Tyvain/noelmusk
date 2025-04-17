@@ -43,6 +43,7 @@ public class MainView extends VerticalLayout {
         setAlignItems(FlexComponent.Alignment.CENTER);
         var grid = new Grid<>(MastodonPost.class, false);
         grid.setSelectionMode(Grid.SelectionMode.SINGLE);
+        grid.setEnabled(false);
         
         // Créer le composant HTML pour afficher le contenu
         var contentDiv = new Div();
