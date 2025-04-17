@@ -27,8 +27,11 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -47,10 +50,10 @@ public class MainView extends VerticalLayout {
 
         //addLineNumberColumn(grid);
        // addTagsColumn(grid);
-        addRepliesColumn(grid);
-        addContentColumn(grid);
         
-        grid.setItemDetailsRenderer(new ComponentRenderer<>(post -> new Div(Jsoup.parse(post.getContent()).text())));
+        addContentColumn(grid);
+        addRepliesColumn(grid);
+        
         grid.addSelectionListener(event -> selectItemListener(grid, contentDiv, event));
         grid.setDetailsVisibleOnClick(false);
 
@@ -71,33 +74,21 @@ public class MainView extends VerticalLayout {
             //     }
             // } else
              if (text.startsWith("hashtag ") || text.startsWith("h ")) {
-                String tag = text.substring(1).trim();
-                grid.setItems(fetchPostsFromTag(tag));
-                grid.getDataProvider().fetch(new Query<>()).findFirst().ifPresent(firstItem -> {
-                    grid.select(firstItem);
-                });
+                String tags = text.substring(1).trim();
+                Set<MastodonPost> uniqueResearches = new HashSet<>(); // Utilisation d'un Set pour éviter les doublons
+            
+                for (String tag : tags.split(" ")) {
+                    uniqueResearches.addAll(fetchPostsFromTag(tag));
+                }
+            
+                List<MastodonPost> researches = new ArrayList<>(uniqueResearches); // Conversion en liste si nécessaire
+                grid.setItems(researches);
+                
+                grid.getDataProvider().fetch(new Query<>()).findFirst().ifPresent(grid::select);
             } else if (text.equals("next") || text.equals("n")) {
-                // Sélectionne la ligne suivante
-                MastodonPost currentSelection = grid.getSelectedItems().stream().findFirst().orElse(null);
-                List<MastodonPost> items = grid.getDataProvider().fetch(new Query<>()).collect(Collectors.toList());
-                if (currentSelection != null) {
-                    int currentIndex = items.indexOf(currentSelection);
-                    if (currentIndex < items.size() - 1) {
-                        grid.select(items.get(currentIndex + 1));
-                    }
-                } else if (!items.isEmpty()) {
-                    grid.select(items.get(0));
-                }
+                change_post(true, grid);
             } else if (text.equals("previous") || text.equals("p")) {
-                // Sélectionne la ligne précédente
-                MastodonPost currentSelection = grid.getSelectedItems().stream().findFirst().orElse(null);
-                List<MastodonPost> items = grid.getDataProvider().fetch(new Query<>()).collect(Collectors.toList());
-                if (currentSelection != null) {
-                    int currentIndex = items.indexOf(currentSelection);
-                    if (currentIndex > 0) {
-                        grid.select(items.get(currentIndex - 1));
-                    }
-                }
+                change_post(false, grid);
             }
             internalChange.set(true);
             prompt.setValue("");
@@ -133,6 +124,24 @@ public class MainView extends VerticalLayout {
         // Ajuster les flex grow
         setFlexGrow(1, horizontalLayout);
         setFlexGrow(0, promptContainer);
+    }
+
+    private void change_post(boolean previous, Grid<MastodonPost> grid) {
+        MastodonPost currentSelection = grid.getSelectedItems().stream().findFirst().orElse(null);
+        List<MastodonPost> items = grid.getDataProvider().fetch(new Query<>()).collect(Collectors.toList());
+        if (currentSelection != null) {
+            // Sélectionne la ligne suivante si la requete est next sinon la ligne précédente
+            int currentIndex = items.indexOf(currentSelection);
+            int newIndex = currentIndex + 1;
+            if (previous) {
+                newIndex = currentIndex - 1;
+            }
+            if ((!previous && currentIndex < items.size() - 1) ||  (previous && currentIndex > 0)) {
+                grid.select(items.get(newIndex));
+            }
+        } else if (!items.isEmpty()) {
+            grid.select(items.get(0));
+        }
     }
 
     private void addLineNumberColumn(Grid<MastodonPost> grid) {
@@ -174,11 +183,13 @@ public class MainView extends VerticalLayout {
 
     private void addRepliesColumn(Grid<MastodonPost> grid) {
         grid.addColumn(post -> post.getRepliesCount())
+                .setHeader("Commentaires")
                 .setAutoWidth(true);
     }
 
     private void addContentColumn(Grid<MastodonPost> grid) {
         grid.addColumn(p -> StringUtils.left(Jsoup.parse(p.getContent()).text(), 150))
+                .setHeader("Post")
                 .setAutoWidth(true);
     }
 
@@ -225,7 +236,6 @@ public class MainView extends VerticalLayout {
             reader.close();
             ObjectMapper mapper = new ObjectMapper();
             mapper.registerModule(new JavaTimeModule());
-
             return Arrays.stream(mapper.readValue(response.toString(), MastodonPost[].class))
                     .collect(Collectors.toList());
         } catch (IOException | URISyntaxException e) {
@@ -245,8 +255,11 @@ public class MainView extends VerticalLayout {
             // Ajouter le contenu du post
             Div postContent = new Div();
             postContent.getElement().setProperty("innerHTML", post.getContent());
-            container.add(postContent);
+
+            container.add(post.getUrl());
             
+            container.add(postContent);
+            post.getCreatedAt();
             // Ajouter les réponses si elles existent
             if (post.getRepliesCount() > 0) {
                 Div repliesHeader = new Div();
