@@ -1,39 +1,29 @@
 package antix.views.main;
 
-import antix.model.MastodonPost;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.vaadin.flow.component.grid.Grid;
-import com.vaadin.flow.component.grid.GridVariant;
-import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.component.html.Span;
-import com.vaadin.flow.component.orderedlayout.FlexComponent;
-import com.vaadin.flow.component.orderedlayout.FlexLayout;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
-import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.data.provider.Query;
-import com.vaadin.flow.data.renderer.ComponentRenderer;
-import com.vaadin.flow.data.selection.SelectionEvent;
-import com.vaadin.flow.router.PageTitle;
-import com.vaadin.flow.router.Route;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.http.client.utils.URIBuilder;
-import org.jsoup.Jsoup;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
+
+import org.apache.http.client.utils.URIBuilder;
+import org.jsoup.Jsoup;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.Route;
+
+import antix.model.MastodonPost;
 
 @PageTitle("main")
 @Route("")
@@ -57,10 +47,10 @@ public class MainView extends VerticalLayout {
             String text = v.getValue().trim();
             prompt.clear();
 
-            if (text.equals("help")) {
+            if (text.equals("help") || text.equals("h")) {
                 showMessage("""
                         🆘 Commandes disponibles :
-                        - `h tag1 tag2` : rechercher des posts par hashtags
+                        - `s tag1 tag2` : rechercher des posts par hashtags
                         - `n` ou `next` : post suivant
                         - `p` ou `previous` : post précédent
                         - `md` : exporter le post actuel en Markdown
@@ -71,7 +61,7 @@ public class MainView extends VerticalLayout {
                 contentDiv.removeAll();
             } else if (text.equals("md")) {
                 exportMarkdown();
-            } else if (text.startsWith("h ") || text.startsWith("hashtag ")) {
+            } else if (text.startsWith("s ") || text.startsWith("search ")) {
                 String[] parts = text.split(" ");
                 Set<MastodonPost> results = new HashSet<>();
                 for (int i = 1; i < parts.length; i++) {
