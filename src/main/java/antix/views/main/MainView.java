@@ -1,23 +1,27 @@
 package antix.views.main;
 
+import antix.model.MastodonPost;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.vaadin.flow.component.html.Div;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.data.provider.Query;
+import com.vaadin.flow.router.PageTitle;
+import com.vaadin.flow.router.Route;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.http.client.utils.URIBuilder;
+import org.jsoup.Jsoup;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import org.apache.http.client.utils.URIBuilder;
-import org.jsoup.Jsoup;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.vaadin.flow.router.Route;
-
-import antix.model.MastodonPost;
+import java.net.URL;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 @PageTitle("main")
 @Route("")
@@ -33,6 +37,7 @@ public class MainView extends VerticalLayout {
         output.getStyle().set("white-space", "pre-wrap");
         output.setWidthFull();
 
+        var prompt = new TextField();
         prompt.setPlaceholder("Entrez une commande...");
         prompt.setWidthFull();
 
@@ -45,33 +50,8 @@ public class MainView extends VerticalLayout {
             prompt.setValue("");
             internalChange.set(false);
 
-            if (text.equals("help") || text.equals("h")) {
-                showMessage("""
-                        🆘 Commandes disponibles :
-                        - `s tag1 tag2` : rechercher des posts par hashtags
-                        - `n` ou `next` : post suivant
-                        - `p` ou `previous` : post précédent
-                        - `md` : exporter le post actuel en Markdown
-                        - `clear` : effacer l'écran
-                        - `help` : afficher cette aide
-                        """);
-            } else if (text.equals("clear")) {
-                contentDiv.removeAll();
-            } else if (text.equals("md")) {
-                exportMarkdown();
-            } else if (text.startsWith("s ") || text.startsWith("search ")) {
-                String[] parts = text.split(" ");
-                Set<MastodonPost> results = new HashSet<>();
-                for (int i = 1; i < parts.length; i++) {
-                    results.addAll(fetchPostsFromTag(parts[i]));
-                }
-                posts.clear();
-                posts.addAll(results);
-                currentIndex = 0;
-                showCurrentPost();
-            } else if (text.equals("n") || text.equals("next")) {
-                if (currentIndex < posts.size() - 1) currentIndex++;
-                showCurrentPost();
+            if (text.equals("n") || text.equals("next")) {
+                navigate(1);
             } else if (text.equals("p") || text.equals("previous")) {
                 navigate(-1);
             } else if (text.equals("list") || text.equals("l")) {
