@@ -29,6 +29,8 @@ public class MainView extends VerticalLayout {
     private final Div output;
     private List<MastodonPost> currentPosts = new ArrayList<>();
     private int currentIndex = 0;
+    private final List<String> commandHistory = new ArrayList<>();
+    private int historyIndex = -1;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yy 'à' HH:mm");
 
@@ -50,9 +52,38 @@ public class MainView extends VerticalLayout {
         output.setText("");
         output.getElement().setProperty("innerHTML", getHelpTableHtml());
 
+        prompt.getElement().addEventListener("keydown", e -> {
+            String key = e.getEventData().getString("event.key");
+            if ("ArrowUp".equals(key)) {
+                if (!commandHistory.isEmpty()) {
+                    historyIndex = Math.max(0, historyIndex - 1);
+                    internalChange.set(true);
+                    prompt.setValue(commandHistory.get(historyIndex));
+                    internalChange.set(false);
+                }
+            } else if ("ArrowDown".equals(key)) {
+                if (!commandHistory.isEmpty()) {
+                    historyIndex = Math.min(commandHistory.size(), historyIndex + 1);
+                    internalChange.set(true);
+                    if (historyIndex < commandHistory.size()) {
+                        prompt.setValue(commandHistory.get(historyIndex));
+                    } else {
+                        prompt.setValue("");
+                    }
+                    internalChange.set(false);
+                }
+            }
+        }).addEventData("event.key");
+
         prompt.addValueChangeListener(v -> {
             if (internalChange.get()) return;
             String text = v.getValue().trim();
+
+            if (!text.isEmpty()) {
+                commandHistory.add(text);
+                historyIndex = commandHistory.size();
+            }
+
             internalChange.set(true);
             prompt.setValue("");
             internalChange.set(false);
@@ -85,6 +116,8 @@ public class MainView extends VerticalLayout {
                 displayPostSummary();
             } else if (text.equals("help")) {
                 output.getElement().setProperty("innerHTML", getHelpTableHtml());
+            } else if (text.equals("clear")) {
+                output.setText("");
             } else if (text.startsWith("s ")) {
                 String query = text.substring(2).trim();
 
@@ -235,6 +268,7 @@ public class MainView extends VerticalLayout {
                 <tr><td><code>sort like</code></td><td>Tri décroissant par likes</td></tr>
                 <tr><td><code>sort date</code></td><td>Tri décroissant par date</td></tr>
                 <tr><td><code>goto N</code></td><td>Aller au post numéro N</td></tr>
+                <tr><td><code>clear</code></td><td>Nettoyer l'affichage</td></tr>
                 <tr><td><code>help</code></td><td>Afficher cette aide</td></tr>
             </table>
         """;
