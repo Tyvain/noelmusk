@@ -6,7 +6,6 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.data.provider.Query;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import org.apache.commons.lang3.StringUtils;
@@ -19,6 +18,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -30,11 +30,15 @@ public class MainView extends VerticalLayout {
     private List<MastodonPost> currentPosts = new ArrayList<>();
     private int currentIndex = 0;
 
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yy 'à' HH:mm");
+
     public MainView() {
         setSizeFull();
 
         output = new Div();
         output.getStyle().set("white-space", "pre-wrap");
+        output.getStyle().set("overflow-y", "auto");
+        output.setHeight("80vh");
         output.setWidthFull();
 
         var prompt = new TextField();
@@ -42,6 +46,9 @@ public class MainView extends VerticalLayout {
         prompt.setWidthFull();
 
         AtomicBoolean internalChange = new AtomicBoolean(false);
+
+        output.setText("");
+        output.getElement().setProperty("innerHTML", getHelpTableHtml());
 
         prompt.addValueChangeListener(v -> {
             if (internalChange.get()) return;
@@ -55,7 +62,7 @@ public class MainView extends VerticalLayout {
             } else if (text.equals("p") || text.equals("previous")) {
                 navigate(-1);
             } else if (text.equals("list") || text.equals("l")) {
-                listPosts();
+                displayPostSummary();
             } else if (text.startsWith("goto ")) {
                 try {
                     int index = Integer.parseInt(text.substring(5).trim()) - 1;
@@ -68,48 +75,54 @@ public class MainView extends VerticalLayout {
                 } catch (NumberFormatException e) {
                     output.setText("Format invalide pour goto.");
                 }
+            } else if (text.equals("sort like")) {
+                currentPosts.sort(Comparator.comparingInt(MastodonPost::getFavouritesCount).reversed());
+                currentIndex = 0;
+                displayPostSummary();
+            } else if (text.equals("sort date")) {
+                currentPosts.sort(Comparator.comparing(MastodonPost::getCreatedAt).reversed());
+                currentIndex = 0;
+                displayPostSummary();
             } else if (text.equals("help")) {
-                output.setText("""
-Commandes disponibles :
-  s tag1 tag2        Recherche avec au moins un tag (OU)
-  s& tag1 tag2       Recherche avec tous les tags (ET)
-  next / n           Post suivant
-  previous / p       Post précédent
-  list / l           Affiche un sommaire des posts
-  goto N             Aller au post numéro N
-  help               Afficher cette aide
-""");
-            } else if (text.startsWith("s& ")) {
-                String[] tags = text.substring(3).trim().split(" ");
-                Map<String, MastodonPost> commonPosts = new HashMap<>();
+                output.getElement().setProperty("innerHTML", getHelpTableHtml());
+            } else if (text.startsWith("s ")) {
+                String query = text.substring(2).trim();
 
-                for (String tag : tags) {
-                    List<MastodonPost> postsForTag = fetchPostsFromTag(tag);
-                    for (MastodonPost post : postsForTag) {
-                        commonPosts.merge(post.getId(), post, (oldPost, newPost) -> oldPost);
-                    }
-                }
+                boolean isAnd = query.contains("&");
+                String[] rawTags = isAnd ? query.split("&") : query.split(" ");
 
-                // Filtrer les posts qui contiennent tous les tags spécifiés
-                List<MastodonPost> filtered = commonPosts.values().stream()
-                        .filter(post -> {
-                            String content = post.getContent().toLowerCase();
-                            return Arrays.stream(tags).allMatch(tag -> content.contains("#" + tag.toLowerCase()));
-                        })
+                List<String> tags = Arrays.stream(rawTags)
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .map(String::toLowerCase)
                         .collect(Collectors.toList());
 
-                currentPosts = filtered;
-                currentIndex = 0;
-                renderCurrentPost();
-            } else if (text.startsWith("s ")) {
-                String[] tags = text.substring(2).trim().split(" ");
                 Set<MastodonPost> results = new HashSet<>();
                 for (String tag : tags) {
                     results.addAll(fetchPostsFromTag(tag));
                 }
-                currentPosts = new ArrayList<>(results);
+
+                List<MastodonPost> filtered;
+
+                if (isAnd) {
+                    filtered = results.stream()
+                            .filter(post -> {
+                                String textContent = Jsoup.parse(post.getContent()).text().toLowerCase();
+                                return tags.stream().allMatch(tag -> textContent.contains("#" + tag));
+                            })
+                            .collect(Collectors.toList());
+                } else {
+                    filtered = results.stream()
+                            .filter(post -> {
+                                String textContent = Jsoup.parse(post.getContent()).text().toLowerCase();
+                                return tags.stream().anyMatch(tag -> textContent.contains("#" + tag));
+                            })
+                            .collect(Collectors.toList());
+                }
+
+                currentPosts = filtered;
                 currentIndex = 0;
-                renderCurrentPost();
+                displayPostSummary();
             } else {
                 output.setText("Commande inconnue. Tapez 'help' pour la liste des commandes.");
             }
@@ -134,17 +147,35 @@ Commandes disponibles :
         }
     }
 
-    private void listPosts() {
-        StringBuilder builder = new StringBuilder("Sommaire:\n");
+    private void displayPostSummary() {
+        if (currentPosts.isEmpty()) {
+            output.setText("Aucun post trouvé.");
+            return;
+        }
+
+        StringBuilder builder = new StringBuilder("""
+            <style>
+                table { border-collapse: collapse; width: 100%; font-family: monospace; }
+                th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+                th { background-color: #333; color: white; }
+            </style>
+            <table>
+                <tr><th>#</th><th>Auteur</th><th>Date</th><th>Contenu</th><th>Likes</th></tr>
+        """);
+
         for (int i = 0; i < currentPosts.size(); i++) {
             MastodonPost post = currentPosts.get(i);
-            builder.append("[").append(i + 1).append("] ")
-                   .append(post.getAccount().getUsername())
-                   .append(" : ")
-                   .append(StringUtils.left(Jsoup.parse(post.getContent()).text(), 50))
-                   .append("\n");
+            builder.append("<tr>")
+                    .append("<td>").append(i + 1).append("</td>")
+                    .append("<td>").append(post.getAccount().getUsername()).append("</td>")
+                    .append("<td>").append(post.getCreatedAt().format(DATE_FORMATTER)).append("</td>")
+                    .append("<td>").append(StringUtils.abbreviate(Jsoup.parse(post.getContent()).text(), 50)).append("</td>")
+                    .append("<td>").append(post.getFavouritesCount()).append("</td>")
+                    .append("</tr>");
         }
-        output.setText(builder.toString());
+
+        builder.append("</table>");
+        output.getElement().setProperty("innerHTML", builder.toString());
     }
 
     private void renderCurrentPost() {
@@ -155,8 +186,9 @@ Commandes disponibles :
         MastodonPost post = currentPosts.get(currentIndex);
         output.setText("Post " + (currentIndex + 1) + "/" + currentPosts.size() + "\n"
                 + "Auteur : @" + post.getAccount().getUsername() + "\n"
-                + "Date : " + post.getCreatedAt() + "\n"
+                + "Date : " + post.getCreatedAt().format(DATE_FORMATTER) + "\n"
                 + "Contenu :\n" + Jsoup.parse(post.getContent()).text() + "\n"
+                + "Likes : " + post.getFavouritesCount() + "\n"
                 + "URL : " + post.getUrl());
     }
 
@@ -184,5 +216,27 @@ Commandes disponibles :
             output.setText("Erreur de récupération : " + e.getMessage());
             return List.of();
         }
+    }
+
+    private String getHelpTableHtml() {
+        return """
+            <style>
+                table { border-collapse: collapse; width: 100%; font-family: monospace; }
+                th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+                th { background-color:rgb(24, 1, 1); color: white; }
+            </style>
+            <table>
+                <tr><th>Commande</th><th>Description</th></tr>
+                <tr><td><code>s tag1 & tag2</code></td><td>Recherche avec tous les tags (ET)</td></tr>
+                <tr><td><code>s tag1 tag2</code></td><td>Recherche avec au moins un tag (OU)</td></tr>
+                <tr><td><code>next</code> / <code>n</code></td><td>Post suivant</td></tr>
+                <tr><td><code>previous</code> / <code>p</code></td><td>Post précédent</td></tr>
+                <tr><td><code>list</code> / <code>l</code></td><td>Affiche un sommaire des posts</td></tr>
+                <tr><td><code>sort like</code></td><td>Tri décroissant par likes</td></tr>
+                <tr><td><code>sort date</code></td><td>Tri décroissant par date</td></tr>
+                <tr><td><code>goto N</code></td><td>Aller au post numéro N</td></tr>
+                <tr><td><code>help</code></td><td>Afficher cette aide</td></tr>
+            </table>
+        """;
     }
 }
