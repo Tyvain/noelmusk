@@ -29,10 +29,11 @@ public class MainView extends VerticalLayout {
     private final Div output;
     private List<MastodonPost> currentPosts = new ArrayList<>();
     private int currentIndex = 0;
-    private int currentPage = 0;
-    private final int POSTS_PER_PAGE = 10;
     private final List<String> commandHistory = new ArrayList<>();
     private int historyIndex = -1;
+
+    private int currentPage = 0;
+    private static final int PAGE_SIZE = 10;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yy 'à' HH:mm");
 
@@ -57,55 +58,41 @@ public class MainView extends VerticalLayout {
         prompt.getElement().addEventListener("keydown", e -> {
             String key = e.getEventData().getString("event.key");
 
-            switch (key) {
-                case "ArrowUp" -> {
-                    if (!commandHistory.isEmpty()) {
-                        historyIndex = Math.max(0, historyIndex - 1);
-                        internalChange.set(true);
-                        prompt.setValue(commandHistory.get(historyIndex));
-                        internalChange.set(false);
-                    }
-                }
-                case "ArrowDown" -> {
-                    if (!commandHistory.isEmpty()) {
-                        historyIndex = Math.min(commandHistory.size(), historyIndex + 1);
-                        internalChange.set(true);
-                        if (historyIndex < commandHistory.size()) {
-                            prompt.setValue(commandHistory.get(historyIndex));
-                        } else {
-                            prompt.setValue("");
-                        }
-                        internalChange.set(false);
-                    }
-                }
-                case "ArrowRight" -> {
-                    if (!currentPosts.isEmpty()) {
-                        int maxPage = (currentPosts.size() - 1) / POSTS_PER_PAGE;
-                        if (currentPage < maxPage) {
-                            currentPage++;
-                            displayPostSummary();
-                        }
-                    }
-                }
-                case "ArrowLeft" -> {
-                    if (!currentPosts.isEmpty()) {
-                        if (currentPage > 0) {
-                            currentPage--;
-                            displayPostSummary();
-                        }
-                    }
-                }
-                case "Enter" -> {
-                    String text = prompt.getValue().trim();
-                    if (!text.isEmpty()) {
-                        commandHistory.add(text);
-                        historyIndex = commandHistory.size();
-                    }
+            if ("ArrowUp".equals(key)) {
+                if (!commandHistory.isEmpty()) {
+                    historyIndex = Math.max(0, historyIndex - 1);
                     internalChange.set(true);
-                    prompt.setValue("");
+                    prompt.setValue(commandHistory.get(historyIndex));
                     internalChange.set(false);
-                    handleCommand(text);
                 }
+            } else if ("ArrowDown".equals(key)) {
+                if (!commandHistory.isEmpty()) {
+                    historyIndex = Math.min(commandHistory.size(), historyIndex + 1);
+                    internalChange.set(true);
+                    if (historyIndex < commandHistory.size()) {
+                        prompt.setValue(commandHistory.get(historyIndex));
+                    } else {
+                        prompt.setValue("");
+                    }
+                    internalChange.set(false);
+                }
+            } else if ("ArrowLeft".equals(key)) {
+                navigatePage(-1);
+            } else if ("ArrowRight".equals(key)) {
+                navigatePage(1);
+            } else if ("Enter".equals(key)) {
+                String text = prompt.getValue().trim();
+
+                if (!text.isEmpty()) {
+                    commandHistory.add(text);
+                    historyIndex = commandHistory.size();
+                }
+
+                internalChange.set(true);
+                prompt.setValue("");
+                internalChange.set(false);
+
+                handleCommand(text);
             }
         }).addEventData("event.key");
 
@@ -120,78 +107,90 @@ public class MainView extends VerticalLayout {
     }
 
     private void handleCommand(String text) {
-        switch (text) {
-            case "n", "next" -> navigate(1);
-            case "p", "previous" -> navigate(-1);
-            case "list", "l" -> displayPostSummary();
-            case "sort like" -> {
-                currentPosts.sort(Comparator.comparingInt(MastodonPost::getFavouritesCount).reversed());
-                currentIndex = 0;
-                currentPage = 0;
-                displayPostSummary();
-            }
-            case "sort date" -> {
-                currentPosts.sort(Comparator.comparing(MastodonPost::getCreatedAt).reversed());
-                currentIndex = 0;
-                currentPage = 0;
-                displayPostSummary();
-            }
-            case "help" -> output.getElement().setProperty("innerHTML", getHelpTableHtml());
-            case "clear" -> output.setText("");
-            default -> {
-                if (text.startsWith("goto ")) {
-                    try {
-                        int index = Integer.parseInt(text.substring(5).trim()) - 1;
-                        if (index >= 0 && index < currentPosts.size()) {
-                            currentIndex = index;
-                            renderCurrentPost();
-                        } else {
-                            output.setText("Index hors limites.");
-                        }
-                    } catch (NumberFormatException e) {
-                        output.setText("Format invalide pour goto.");
+        if (text.equals("n") || text.equals("next")) {
+            navigate(1);
+        } else if (text.equals("p") || text.equals("previous")) {
+            navigate(-1);
+        } else if (text.equals("list") || text.equals("l")) {
+            displayPostSummary();
+        } else if (text.startsWith("goto ")) {
+            try {
+                int index = Integer.parseInt(text.substring(5).trim()) - 1;
+                if (index >= 0 && index < currentPosts.size()) {
+                    MastodonPost post = currentPosts.get(index);
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("Post ").append(index + 1).append("/").append(currentPosts.size()).append("\n");
+                    sb.append("Auteur : @").append(post.getAccount().getUsername()).append("\n");
+                    sb.append("Date : ").append(post.getCreatedAt().format(DATE_FORMATTER)).append("\n");
+                    sb.append("Contenu :\n").append(Jsoup.parse(post.getContent()).text()).append("\n");
+                    sb.append("Likes : ").append(post.getFavouritesCount()).append("\n");
+                    sb.append("URL : ").append(post.getUrl()).append("\n");
+        
+                    if (post.getMediaAttachments() != null && !post.getMediaAttachments().isEmpty()) {
+                        sb.append("Image : ").append(post.getMediaAttachments().get(0).getUrl()).append("\n");
                     }
-                } else if (text.startsWith("s ")) {
-                    String query = text.substring(2).trim();
-                    boolean isAnd = query.contains("&");
-                    String[] rawTags = isAnd ? query.split("&") : query.split(" ");
-
-                    List<String> tags = Arrays.stream(rawTags)
-                            .map(String::trim)
-                            .filter(s -> !s.isEmpty())
-                            .map(String::toLowerCase)
-                            .collect(Collectors.toList());
-
-                    Set<MastodonPost> results = new HashSet<>();
-                    for (String tag : tags) {
-                        results.addAll(fetchPostsFromTag(tag));
-                    }
-
-                    List<MastodonPost> filtered;
-                    if (isAnd) {
-                        filtered = results.stream()
-                                .filter(post -> {
-                                    String textContent = Jsoup.parse(post.getContent()).text().toLowerCase();
-                                    return tags.stream().allMatch(tag -> textContent.contains("#" + tag));
-                                })
-                                .collect(Collectors.toList());
-                    } else {
-                        filtered = results.stream()
-                                .filter(post -> {
-                                    String textContent = Jsoup.parse(post.getContent()).text().toLowerCase();
-                                    return tags.stream().anyMatch(tag -> textContent.contains("#" + tag));
-                                })
-                                .collect(Collectors.toList());
-                    }
-
-                    currentPosts = filtered;
-                    currentIndex = 0;
-                    currentPage = 0;
-                    displayPostSummary();
+        
+                    output.setText(sb.toString());
                 } else {
-                    output.setText("Commande inconnue. Tapez 'help' pour la liste des commandes.");
+                    output.setText("Index hors limites.");
                 }
+            } catch (NumberFormatException e) {
+                output.setText("Format invalide pour goto.");
             }
+        } else if (text.equals("sort like")) {
+            currentPosts.sort(Comparator.comparingInt(MastodonPost::getFavouritesCount).reversed());
+            currentIndex = 0;
+            currentPage = 0;
+            displayPostSummary();
+        } else if (text.equals("sort date")) {
+            currentPosts.sort(Comparator.comparing(MastodonPost::getCreatedAt).reversed());
+            currentIndex = 0;
+            currentPage = 0;
+            displayPostSummary();
+        } else if (text.equals("help")) {
+            output.getElement().setProperty("innerHTML", getHelpTableHtml());
+        } else if (text.equals("clear")) {
+            output.setText("");
+        } else if (text.startsWith("s ")) {
+            String query = text.substring(2).trim();
+
+            boolean isAnd = query.contains("&");
+            String[] rawTags = isAnd ? query.split("&") : query.split(" ");
+
+            List<String> tags = Arrays.stream(rawTags)
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .map(String::toLowerCase)
+                    .collect(Collectors.toList());
+
+            Set<MastodonPost> results = new HashSet<>();
+            for (String tag : tags) {
+                results.addAll(fetchPostsFromTag(tag));
+            }
+
+            List<MastodonPost> filtered;
+            if (isAnd) {
+                filtered = results.stream()
+                        .filter(post -> {
+                            String textContent = Jsoup.parse(post.getContent()).text().toLowerCase();
+                            return tags.stream().allMatch(tag -> textContent.contains("#" + tag));
+                        })
+                        .collect(Collectors.toList());
+            } else {
+                filtered = results.stream()
+                        .filter(post -> {
+                            String textContent = Jsoup.parse(post.getContent()).text().toLowerCase();
+                            return tags.stream().anyMatch(tag -> textContent.contains("#" + tag));
+                        })
+                        .collect(Collectors.toList());
+            }
+
+            currentPosts = filtered;
+            currentIndex = 0;
+            currentPage = 0;
+            displayPostSummary();
+        } else {
+            output.setText("Commande inconnue. Tapez 'help' pour la liste des commandes.");
         }
     }
 
@@ -204,14 +203,21 @@ public class MainView extends VerticalLayout {
         }
     }
 
+    private void navigatePage(int offset) {
+        int maxPage = (int) Math.ceil(currentPosts.size() / (double) PAGE_SIZE);
+        currentPage = Math.max(0, Math.min(currentPage + offset, maxPage - 1));
+        displayPostSummary();
+    }
+
     private void displayPostSummary() {
         if (currentPosts.isEmpty()) {
             output.setText("Aucun post trouvé.");
             return;
         }
 
-        int start = currentPage * POSTS_PER_PAGE;
-        int end = Math.min(start + POSTS_PER_PAGE, currentPosts.size());
+        int totalPages = (int) Math.ceil(currentPosts.size() / (double) PAGE_SIZE);
+        int start = currentPage * PAGE_SIZE;
+        int end = Math.min(start + PAGE_SIZE, currentPosts.size());
 
         StringBuilder builder = new StringBuilder("""
             <style>
@@ -219,6 +225,14 @@ public class MainView extends VerticalLayout {
                 th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
                 th { background-color: #333; color: white; }
             </style>
+        """);
+
+        builder.append("<div style='font-family:monospace;margin-bottom:5px;'>")
+               .append("Page ").append(currentPage + 1).append("/").append(totalPages)
+               .append(" — ").append(currentPosts.size()).append(" posts")
+               .append("</div>");
+
+        builder.append("""
             <table>
                 <tr><th>#</th><th>Auteur</th><th>Date</th><th>Contenu</th><th>Likes</th></tr>
         """);
@@ -291,11 +305,10 @@ public class MainView extends VerticalLayout {
                 <tr><td><code>s tag1 tag2</code></td><td>Recherche avec au moins un tag (OU)</td></tr>
                 <tr><td><code>next</code> / <code>n</code></td><td>Post suivant</td></tr>
                 <tr><td><code>previous</code> / <code>p</code></td><td>Post précédent</td></tr>
-                <tr><td><code>list</code> / <code>l</code></td><td>Affiche un sommaire des posts (10 par page)</td></tr>
-                <tr><td><code>→ / ←</code></td><td>Page suivante / précédente</td></tr>
+                <tr><td><code>list</code> / <code>l</code></td><td>Affiche un sommaire des posts</td></tr>
                 <tr><td><code>sort like</code></td><td>Tri décroissant par likes</td></tr>
                 <tr><td><code>sort date</code></td><td>Tri décroissant par date</td></tr>
-                <tr><td><code>goto N</code></td><td>Aller au post numéro N</td></tr>
+                <tr><td><code>goto N</code></td><td>Aller au post numéro N (affichage détaillé)</td></tr>
                 <tr><td><code>clear</code></td><td>Nettoyer l'affichage</td></tr>
                 <tr><td><code>help</code></td><td>Afficher cette aide</td></tr>
             </table>
