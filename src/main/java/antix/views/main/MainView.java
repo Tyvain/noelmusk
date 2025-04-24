@@ -54,6 +54,7 @@ public class MainView extends VerticalLayout {
 
         prompt.getElement().addEventListener("keydown", e -> {
             String key = e.getEventData().getString("event.key");
+
             if ("ArrowUp".equals(key)) {
                 if (!commandHistory.isEmpty()) {
                     historyIndex = Math.max(0, historyIndex - 1);
@@ -72,94 +73,21 @@ public class MainView extends VerticalLayout {
                     }
                     internalChange.set(false);
                 }
+            } else if ("Enter".equals(key)) {
+                String text = prompt.getValue().trim();
+
+                if (!text.isEmpty()) {
+                    commandHistory.add(text);
+                    historyIndex = commandHistory.size();
+                }
+
+                internalChange.set(true);
+                prompt.setValue("");
+                internalChange.set(false);
+
+                handleCommand(text);
             }
         }).addEventData("event.key");
-
-        prompt.addValueChangeListener(v -> {
-            if (internalChange.get()) return;
-            String text = v.getValue().trim();
-
-            if (!text.isEmpty()) {
-                commandHistory.add(text);
-                historyIndex = commandHistory.size();
-            }
-
-            internalChange.set(true);
-            prompt.setValue("");
-            internalChange.set(false);
-
-            if (text.equals("n") || text.equals("next")) {
-                navigate(1);
-            } else if (text.equals("p") || text.equals("previous")) {
-                navigate(-1);
-            } else if (text.equals("list") || text.equals("l")) {
-                displayPostSummary();
-            } else if (text.startsWith("goto ")) {
-                try {
-                    int index = Integer.parseInt(text.substring(5).trim()) - 1;
-                    if (index >= 0 && index < currentPosts.size()) {
-                        currentIndex = index;
-                        renderCurrentPost();
-                    } else {
-                        output.setText("Index hors limites.");
-                    }
-                } catch (NumberFormatException e) {
-                    output.setText("Format invalide pour goto.");
-                }
-            } else if (text.equals("sort like")) {
-                currentPosts.sort(Comparator.comparingInt(MastodonPost::getFavouritesCount).reversed());
-                currentIndex = 0;
-                displayPostSummary();
-            } else if (text.equals("sort date")) {
-                currentPosts.sort(Comparator.comparing(MastodonPost::getCreatedAt).reversed());
-                currentIndex = 0;
-                displayPostSummary();
-            } else if (text.equals("help")) {
-                output.getElement().setProperty("innerHTML", getHelpTableHtml());
-            } else if (text.equals("clear")) {
-                output.setText("");
-            } else if (text.startsWith("s ")) {
-                String query = text.substring(2).trim();
-
-                boolean isAnd = query.contains("&");
-                String[] rawTags = isAnd ? query.split("&") : query.split(" ");
-
-                List<String> tags = Arrays.stream(rawTags)
-                        .map(String::trim)
-                        .filter(s -> !s.isEmpty())
-                        .map(String::toLowerCase)
-                        .collect(Collectors.toList());
-
-                Set<MastodonPost> results = new HashSet<>();
-                for (String tag : tags) {
-                    results.addAll(fetchPostsFromTag(tag));
-                }
-
-                List<MastodonPost> filtered;
-
-                if (isAnd) {
-                    filtered = results.stream()
-                            .filter(post -> {
-                                String textContent = Jsoup.parse(post.getContent()).text().toLowerCase();
-                                return tags.stream().allMatch(tag -> textContent.contains("#" + tag));
-                            })
-                            .collect(Collectors.toList());
-                } else {
-                    filtered = results.stream()
-                            .filter(post -> {
-                                String textContent = Jsoup.parse(post.getContent()).text().toLowerCase();
-                                return tags.stream().anyMatch(tag -> textContent.contains("#" + tag));
-                            })
-                            .collect(Collectors.toList());
-                }
-
-                currentPosts = filtered;
-                currentIndex = 0;
-                displayPostSummary();
-            } else {
-                output.setText("Commande inconnue. Tapez 'help' pour la liste des commandes.");
-            }
-        });
 
         var container = new VerticalLayout();
         container.setSizeFull();
@@ -169,6 +97,79 @@ public class MainView extends VerticalLayout {
         container.add(output);
         add(container);
         add(prompt);
+    }
+
+    private void handleCommand(String text) {
+        if (text.equals("n") || text.equals("next")) {
+            navigate(1);
+        } else if (text.equals("p") || text.equals("previous")) {
+            navigate(-1);
+        } else if (text.equals("list") || text.equals("l")) {
+            displayPostSummary();
+        } else if (text.startsWith("goto ")) {
+            try {
+                int index = Integer.parseInt(text.substring(5).trim()) - 1;
+                if (index >= 0 && index < currentPosts.size()) {
+                    currentIndex = index;
+                    renderCurrentPost();
+                } else {
+                    output.setText("Index hors limites.");
+                }
+            } catch (NumberFormatException e) {
+                output.setText("Format invalide pour goto.");
+            }
+        } else if (text.equals("sort like")) {
+            currentPosts.sort(Comparator.comparingInt(MastodonPost::getFavouritesCount).reversed());
+            currentIndex = 0;
+            displayPostSummary();
+        } else if (text.equals("sort date")) {
+            currentPosts.sort(Comparator.comparing(MastodonPost::getCreatedAt).reversed());
+            currentIndex = 0;
+            displayPostSummary();
+        } else if (text.equals("help")) {
+            output.getElement().setProperty("innerHTML", getHelpTableHtml());
+        } else if (text.equals("clear")) {
+            output.setText("");
+        } else if (text.startsWith("s ")) {
+            String query = text.substring(2).trim();
+
+            boolean isAnd = query.contains("&");
+            String[] rawTags = isAnd ? query.split("&") : query.split(" ");
+
+            List<String> tags = Arrays.stream(rawTags)
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .map(String::toLowerCase)
+                    .collect(Collectors.toList());
+
+            Set<MastodonPost> results = new HashSet<>();
+            for (String tag : tags) {
+                results.addAll(fetchPostsFromTag(tag));
+            }
+
+            List<MastodonPost> filtered;
+            if (isAnd) {
+                filtered = results.stream()
+                        .filter(post -> {
+                            String textContent = Jsoup.parse(post.getContent()).text().toLowerCase();
+                            return tags.stream().allMatch(tag -> textContent.contains("#" + tag));
+                        })
+                        .collect(Collectors.toList());
+            } else {
+                filtered = results.stream()
+                        .filter(post -> {
+                            String textContent = Jsoup.parse(post.getContent()).text().toLowerCase();
+                            return tags.stream().anyMatch(tag -> textContent.contains("#" + tag));
+                        })
+                        .collect(Collectors.toList());
+            }
+
+            currentPosts = filtered;
+            currentIndex = 0;
+            displayPostSummary();
+        } else {
+            output.setText("Commande inconnue. Tapez 'help' pour la liste des commandes.");
+        }
     }
 
     private void navigate(int offset) {
