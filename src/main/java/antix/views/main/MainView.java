@@ -117,20 +117,8 @@ public class MainView extends VerticalLayout {
             try {
                 int index = Integer.parseInt(text.substring(5).trim()) - 1;
                 if (index >= 0 && index < currentPosts.size()) {
-                    MastodonPost post = currentPosts.get(index);
-                    StringBuilder sb = new StringBuilder();
-                    sb.append("Post ").append(index + 1).append("/").append(currentPosts.size()).append("\n");
-                    sb.append("Auteur : @").append(post.getAccount().getUsername()).append("\n");
-                    sb.append("Date : ").append(post.getCreatedAt().format(DATE_FORMATTER)).append("\n");
-                    sb.append("Contenu :\n").append(Jsoup.parse(post.getContent()).text()).append("\n");
-                    sb.append("Likes : ").append(post.getFavouritesCount()).append("\n");
-                    sb.append("URL : ").append(post.getUrl()).append("\n");
-        
-                    if (post.getMediaAttachments() != null && !post.getMediaAttachments().isEmpty()) {
-                        sb.append("Image : ").append(post.getMediaAttachments().get(0).getUrl()).append("\n");
-                    }
-        
-                    output.setText(sb.toString());
+                    currentIndex = index;
+                    renderCurrentPost();
                 } else {
                     output.setText("Index hors limites.");
                 }
@@ -189,6 +177,25 @@ public class MainView extends VerticalLayout {
             currentIndex = 0;
             currentPage = 0;
             displayPostSummary();
+        } else if (text.startsWith("view")) {
+            try {
+                if (text.equals("view")) {
+                    if (currentIndex >= 0 && currentIndex < currentPosts.size()) {
+                        getUI().ifPresent(ui -> ui.getPage().open(currentPosts.get(currentIndex).getUrl()));
+                    } else {
+                        output.setText("Aucun post sélectionné.");
+                    }
+                } else {
+                    int index = Integer.parseInt(text.substring(5).trim()) - 1;
+                    if (index >= 0 && index < currentPosts.size()) {
+                        getUI().ifPresent(ui -> ui.getPage().open(currentPosts.get(index).getUrl()));
+                    } else {
+                        output.setText("Index hors limites.");
+                    }
+                }
+            } catch (NumberFormatException e) {
+                output.setText("Format invalide pour view.");
+            }
         } else {
             output.setText("Commande inconnue. Tapez 'help' pour la liste des commandes.");
         }
@@ -309,6 +316,8 @@ public class MainView extends VerticalLayout {
                 <tr><td><code>sort like</code></td><td>Tri décroissant par likes</td></tr>
                 <tr><td><code>sort date</code></td><td>Tri décroissant par date</td></tr>
                 <tr><td><code>goto N</code></td><td>Aller au post numéro N (affichage détaillé)</td></tr>
+                <tr><td><code>view N</code></td><td>Ouvrir le post N dans un nouvel onglet</td></tr>
+                <tr><td><code>view</code></td><td>Ouvrir le post affiché actuellement</td></tr>
                 <tr><td><code>clear</code></td><td>Nettoyer l'affichage</td></tr>
                 <tr><td><code>help</code></td><td>Afficher cette aide</td></tr>
             </table>
