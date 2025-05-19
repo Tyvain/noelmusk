@@ -1,8 +1,12 @@
 package antix.views.main;
 
 import antix.model.MastodonPost;
+import antix.model.Post;
+
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
@@ -16,18 +20,23 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
+
+import antix.model.RedditPost;
 
 @PageTitle("main")
 @Route("")
 public class MainView extends VerticalLayout {
     private final Div output;
-    private List<MastodonPost> currentPosts = new ArrayList<>();
+    private List<Post> currentPosts = new ArrayList<>();
     private int currentIndex = 0;
     private final List<String> commandHistory = new ArrayList<>();
     private int historyIndex = -1;
@@ -56,43 +65,47 @@ public class MainView extends VerticalLayout {
         output.getElement().setProperty("innerHTML", getHelpTableHtml());
 
         prompt.getElement().addEventListener("keydown", e -> {
-            String key = e.getEventData().getString("event.key");
+            try {
+               String key = e.getEventData().getString("event.key");
 
-            if ("ArrowUp".equals(key)) {
-                if (!commandHistory.isEmpty()) {
-                    historyIndex = Math.max(0, historyIndex - 1);
-                    internalChange.set(true);
-                    prompt.setValue(commandHistory.get(historyIndex));
-                    internalChange.set(false);
-                }
-            } else if ("ArrowDown".equals(key)) {
-                if (!commandHistory.isEmpty()) {
-                    historyIndex = Math.min(commandHistory.size(), historyIndex + 1);
-                    internalChange.set(true);
-                    if (historyIndex < commandHistory.size()) {
+                if ("ArrowUp".equals(key)) {
+                    if (!commandHistory.isEmpty()) {
+                        historyIndex = Math.max(0, historyIndex - 1);
+                        internalChange.set(true);
                         prompt.setValue(commandHistory.get(historyIndex));
-                    } else {
-                        prompt.setValue("");
+                        internalChange.set(false);
                     }
+                } else if ("ArrowDown".equals(key)) {
+                    if (!commandHistory.isEmpty()) {
+                        historyIndex = Math.min(commandHistory.size(), historyIndex + 1);
+                        internalChange.set(true);
+                        if (historyIndex < commandHistory.size()) {
+                            prompt.setValue(commandHistory.get(historyIndex));
+                        } else {
+                            prompt.setValue("");
+                        }
+                        internalChange.set(false);
+                    }
+                } else if ("ArrowLeft".equals(key)) {
+                    navigatePage(-1);
+                } else if ("ArrowRight".equals(key)) {
+                    navigatePage(1);
+                } else if ("Enter".equals(key)) {
+                    String text = prompt.getValue().trim();
+
+                    if (!text.isEmpty()) {
+                        commandHistory.add(text);
+                        historyIndex = commandHistory.size();
+                    }
+
+                    internalChange.set(true);
+                    prompt.setValue("");
                     internalChange.set(false);
-                }
-            } else if ("ArrowLeft".equals(key)) {
-                navigatePage(-1);
-            } else if ("ArrowRight".equals(key)) {
-                navigatePage(1);
-            } else if ("Enter".equals(key)) {
-                String text = prompt.getValue().trim();
 
-                if (!text.isEmpty()) {
-                    commandHistory.add(text);
-                    historyIndex = commandHistory.size();
-                }
-
-                internalChange.set(true);
-                prompt.setValue("");
-                internalChange.set(false);
-
-                handleCommand(text);
+                    handleCommand(text);
+                } 
+            } catch (NullPointerException Ne) {
+                Logger.getLogger(MainView.class.getName()).log(Level.WARNING, "NullPointerException ignorée", e);
             }
         }).addEventData("event.key");
 
@@ -126,12 +139,12 @@ public class MainView extends VerticalLayout {
                 output.setText("Format invalide pour goto.");
             }
         } else if (text.equals("sort like")) {
-            currentPosts.sort(Comparator.comparingInt(MastodonPost::getFavouritesCount).reversed());
+            currentPosts.sort(Comparator.comparingInt(Post::getLikes).reversed());
             currentIndex = 0;
             currentPage = 0;
             displayPostSummary();
         } else if (text.equals("sort date")) {
-            currentPosts.sort(Comparator.comparing(MastodonPost::getCreatedAt).reversed());
+            currentPosts.sort(Comparator.comparing(Post::getCreatedAt).reversed());
             currentIndex = 0;
             currentPage = 0;
             displayPostSummary();
@@ -151,27 +164,25 @@ public class MainView extends VerticalLayout {
                     .map(String::toLowerCase)
                     .collect(Collectors.toList());
 
-            Set<MastodonPost> results = new HashSet<>();
+            List<Post> results = new ArrayList<>();
             for (String tag : tags) {
-                results.addAll(fetchPostsFromTag(tag));
+                results.addAll(fetchMastodonPostsFromTag(tag));
+                results.addAll(fetchRedditPostsFromTag(tag));
             }
+            List<Post> filtered = results.stream()
+                .filter(post -> {
+                    final String[] textContent = {Jsoup.parse(post.getContent()).text().toLowerCase().trim()};
 
-            List<MastodonPost> filtered;
-            if (isAnd) {
-                filtered = results.stream()
-                        .filter(post -> {
-                            String textContent = Jsoup.parse(post.getContent()).text().toLowerCase();
-                            return tags.stream().allMatch(tag -> textContent.contains("#" + tag));
-                        })
-                        .collect(Collectors.toList());
-            } else {
-                filtered = results.stream()
-                        .filter(post -> {
-                            String textContent = Jsoup.parse(post.getContent()).text().toLowerCase();
-                            return tags.stream().anyMatch(tag -> textContent.contains("#" + tag));
-                        })
-                        .collect(Collectors.toList());
-            }
+                    if (post.fromReddit()) {
+                        textContent[0] += " " + ((RedditPost) post).getTitle().toLowerCase().trim();
+                    }
+
+                    return isAnd
+                            ? tags.stream().allMatch(tag -> textContent[0].contains(tag))
+                            : tags.stream().anyMatch(tag -> textContent[0].contains(tag));
+                })
+                .collect(Collectors.toList());
+            filtered.sort(Comparator.comparing(Post::getCreatedAt).reversed());
 
             currentPosts = filtered;
             currentIndex = 0;
@@ -245,13 +256,13 @@ public class MainView extends VerticalLayout {
         """);
 
         for (int i = start; i < end; i++) {
-            MastodonPost post = currentPosts.get(i);
+            Post post = currentPosts.get(i);
             builder.append("<tr>")
                     .append("<td>").append(i + 1).append("</td>")
-                    .append("<td>").append(post.getAccount().getUsername()).append("</td>")
+                    .append("<td>").append(post.getAuthor()).append("</td>")
                     .append("<td>").append(post.getCreatedAt().format(DATE_FORMATTER)).append("</td>")
-                    .append("<td>").append(StringUtils.abbreviate(Jsoup.parse(post.getContent()).text(), 50)).append("</td>")
-                    .append("<td>").append(post.getFavouritesCount()).append("</td>")
+                    .append("<td>").append(post.fromReddit() ? ((RedditPost) post).getTitle() : post.getContent()).append("</td>")
+                    .append("<td>").append(post.getLikes()).append("</td>")
                     .append("</tr>");
         }
 
@@ -261,43 +272,88 @@ public class MainView extends VerticalLayout {
 
     private void renderCurrentPost() {
         if (currentPosts.isEmpty()) {
-            output.setText("Aucun post trouvé.");
+            output.setText("<p style='font-family:monospace;'>Aucun post trouvé.</p>");
             return;
         }
-        MastodonPost post = currentPosts.get(currentIndex);
-        output.setText("Post " + (currentIndex + 1) + "/" + currentPosts.size() + "\n"
-                + "Auteur : @" + post.getAccount().getUsername() + "\n"
-                + "Date : " + post.getCreatedAt().format(DATE_FORMATTER) + "\n"
-                + "Contenu :\n" + Jsoup.parse(post.getContent()).text() + "\n"
-                + "Likes : " + post.getFavouritesCount() + "\n"
-                + "URL : " + post.getUrl());
+
+        Post post = currentPosts.get(currentIndex);
+        String titre = post instanceof RedditPost ? "<b>Titre :</b> " + ((RedditPost) post).getTitle() + "<br>" : "";
+        String contenu = post.getContent().isEmpty() ? "" : "<b>Contenu :</b><br>" + Jsoup.parse(post.getContent()).text() + "<br>";
+        
+        StringBuilder mediaURL = new StringBuilder(post.getMediaUrl().isEmpty() ? "" : "<br><b>Liens des contenus :</b><br>");
+        for (String url : post.getMediaUrl()) {
+            if (!post.fromReddit() || url.contains("preview")) mediaURL.append(url).append("<br>");
+        }
+
+
+        output.getElement().setProperty("innerHTML",
+            "<p style='font-family:monospace;'>" +
+            "<b>Post :</b> " + (currentIndex + 1) + "/" + currentPosts.size() + "<br>" +
+            "<b>Auteur :</b> @" + post.getAuthor() + "<br>" +
+            "<b>Date :</b> " + post.getCreatedAt().format(DATE_FORMATTER) + "<br>" +
+            titre +
+            contenu +
+            "<b>Likes :</b> " + post.getLikes() + "<br>" +
+            "<b>URL :</b> " + post.getUrl() + "<br>" +
+            mediaURL +
+            "</p>"
+        );
     }
 
-    public List<MastodonPost> fetchPostsFromTag(String tag) {
+    public List<MastodonPost> fetchMastodonPostsFromTag(String tag) {
         if (StringUtils.isEmpty(tag)) return List.of();
         try {
             var uri = new URIBuilder("https://mastodon.social/api/v1/timelines/tag/" + tag)
-                    .addParameter("limit", "40")
+                    .addParameter("limit", "50")
                     .build();
             URL url = uri.toURL();
-            HttpURLConnection con = (HttpURLConnection) url.openConnection();
-            con.setRequestMethod("GET");
+            
+            JsonNode postsNode = getURLResponse(url);
+            List<MastodonPost> posts = new ArrayList<>();
 
-            BufferedReader reader = new BufferedReader(new InputStreamReader(con.getInputStream()));
-            StringBuilder response = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                response.append(line);
+            for (JsonNode postNode : postsNode) {
+                MastodonPost mastodonPost = new MastodonPost(postNode);
+                posts.add(mastodonPost);
             }
-            reader.close();
-            ObjectMapper mapper = new ObjectMapper();
-            mapper.registerModule(new JavaTimeModule());
-            return Arrays.stream(mapper.readValue(response.toString(), MastodonPost[].class)).collect(Collectors.toList());
-        } catch (IOException | URISyntaxException e) {
+
+            posts.sort(Comparator.comparing(MastodonPost::getLikes).reversed());
+            return posts.subList(0, posts.size() < 15 ? posts.size() : 15);
+
+        } catch (Exception e) {
             output.setText("Erreur de récupération : " + e.getMessage());
             return List.of();
         }
     }
+
+    public List<RedditPost> fetchRedditPostsFromTag(String tag) {
+        if (StringUtils.isEmpty(tag)) return List.of();
+        try {
+            // Construire l'URL avec URIBuilder
+            URI uri = new URIBuilder("https://www.reddit.com/search.json")
+                    .addParameter("q", tag)
+                    .addParameter("limit", String.valueOf(50))
+                    .build();
+
+            URL url = uri.toURL();
+            
+            JsonNode rootNode = getURLResponse(url);
+            JsonNode postsNode = rootNode.path("data").path("children");
+
+            List<RedditPost> posts = new ArrayList<>();
+
+            for (JsonNode postNode : postsNode) {
+                RedditPost redditPost = new RedditPost(postNode);
+                posts.add(redditPost);
+            }
+            posts.sort(Comparator.comparing(RedditPost::getLikes).reversed());
+            return posts.subList(0, posts.size() < 15 ? posts.size() : 15);
+
+        } catch (Exception e) {
+            output.setText("Erreur de récupération : " + e.getMessage());
+            return List.of();
+        }
+    }
+
 
     private String getHelpTableHtml() {
         return """
@@ -322,5 +378,30 @@ public class MainView extends VerticalLayout {
                 <tr><td><code>help</code></td><td>Afficher cette aide</td></tr>
             </table>
         """;
+    }
+
+    private JsonNode getURLResponse(URL url) {
+        try {
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            con.setRequestMethod("GET");
+            con.setRequestProperty("User-Agent", "Mozilla/5.0");
+
+            // Lire la réponse JSON
+            BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
+            StringBuilder response = new StringBuilder();
+            String inputLine;
+
+            while ((inputLine = in.readLine()) != null) {
+                response.append(inputLine);
+            }
+            in.close();
+
+            // Parser le JSON avec Jackson
+            ObjectMapper objectMapper = new ObjectMapper();
+            return objectMapper.readTree(response.toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }
