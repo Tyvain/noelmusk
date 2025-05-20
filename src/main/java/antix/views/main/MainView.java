@@ -38,6 +38,8 @@ public class MainView extends VerticalLayout {
     private final Div output;
     private List<Post> currentPosts = new ArrayList<>();
     private int currentIndex = 0;
+    private boolean allowNsfw = false;
+
     private final List<String> commandHistory = new ArrayList<>();
     private int historyIndex = -1;
 
@@ -152,6 +154,10 @@ public class MainView extends VerticalLayout {
             output.getElement().setProperty("innerHTML", getHelpTableHtml());
         } else if (text.equals("clear")) {
             output.setText("");
+        } else if (text.equals("allow nsfw")) {
+            toggle_nsfw(true);
+        } else if (text.equals("unallow nsfw")) {
+            toggle_nsfw(false);
         } else if (text.startsWith("s ")) {
             String query = text.substring(2).trim();
 
@@ -193,6 +199,11 @@ public class MainView extends VerticalLayout {
         } else {
             output.setText("Commande inconnue. Tapez 'help' pour la liste des commandes.");
         }
+    }
+
+    private void toggle_nsfw(boolean allow) {
+        allowNsfw = allow;
+        output.setText("Mode NSFW " + (!allowNsfw ? "désactivé." : "activé."));
     }
 
     private void navigate(int offset) {
@@ -291,7 +302,7 @@ public class MainView extends VerticalLayout {
     private List<Post> fetchPostsFromMastodon(List<String> tags, boolean isAnd) {
         List<Post> mastodonResults = new ArrayList<>();
         for (String tag : tags) {
-            mastodonResults.addAll(fetchMastodonPostsFromTag(tag));
+            mastodonResults.addAll(fetchMastodonPostsFromTag(tag, allowNsfw));
         }
         return filterPost(mastodonResults, tags, isAnd);
     }
@@ -299,7 +310,7 @@ public class MainView extends VerticalLayout {
     private List<Post> fetchPostsFromReddit(List<String> tags, boolean isAnd) {
         List<Post> redditResults = new ArrayList<>();
         for (String tag : tags) {
-            redditResults.addAll(fetchRedditPostsFromTag(tag));
+            redditResults.addAll(fetchRedditPostsFromTag(tag, allowNsfw));
         }
         return filterPost(redditResults, tags, isAnd);
     }
@@ -322,7 +333,7 @@ public class MainView extends VerticalLayout {
         return posts.subList(0, posts.size() < 15 * tags.size() ? posts.size() : 15 * tags.size());
     }
 
-    public List<MastodonPost> fetchMastodonPostsFromTag(String tag) {
+    public List<MastodonPost> fetchMastodonPostsFromTag(String tag, boolean allowNsfw) {
         if (StringUtils.isEmpty(tag)) return List.of();
         try {
             var uri = new URIBuilder("https://mastodon.social/api/v1/timelines/tag/" + tag)
@@ -334,6 +345,9 @@ public class MainView extends VerticalLayout {
             List<MastodonPost> posts = new ArrayList<>();
 
             for (JsonNode postNode : postsNode) {
+                boolean isSensitive = postNode.path("sensitive").asBoolean(false);
+                if (!allowNsfw && isSensitive) continue;
+
                 MastodonPost mastodonPost = new MastodonPost(postNode);
                 posts.add(mastodonPost);
             }
@@ -347,7 +361,7 @@ public class MainView extends VerticalLayout {
         }
     }
 
-    public List<RedditPost> fetchRedditPostsFromTag(String tag) {
+    public List<RedditPost> fetchRedditPostsFromTag(String tag, boolean allowNsfw) {
         if (StringUtils.isEmpty(tag)) return List.of();
         try {
             // Construire l'URL avec URIBuilder
@@ -364,6 +378,9 @@ public class MainView extends VerticalLayout {
                 
             List<RedditPost> posts = new ArrayList<>();
             for (JsonNode postNode : postsNode) {
+                boolean isNsfw = postNode.path("over_18").asBoolean(false);
+                if (!allowNsfw && isNsfw) continue;
+
                 RedditPost redditPost = new RedditPost(postNode);
                 posts.add(redditPost);
             }
@@ -397,6 +414,8 @@ public class MainView extends VerticalLayout {
                 <tr><td><code>view N</code></td><td>Ouvrir le post N dans un nouvel onglet</td></tr>
                 <tr><td><code>view</code></td><td>Ouvrir le post affiché actuellement</td></tr>
                 <tr><td><code>clear</code></td><td>Nettoyer l'affichage</td></tr>
+                <tr><td><code>allow nsfw</code></td><td>Afficher les contenus sensibles</td></tr>
+                <tr><td><code>unallow nsfw</code></td><td>Ne pas afficher les contenus sensibles</td></tr>
                 <tr><td><code>help</code></td><td>Afficher cette aide</td></tr>
             </table>
         """;
@@ -426,7 +445,7 @@ public class MainView extends VerticalLayout {
             ObjectMapper objectMapper = new ObjectMapper();
             return objectMapper.readTree(response.toString());
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Erreur lors de la récupération des données : ".concat(e.getMessage()));
             return null;
         }
     }
