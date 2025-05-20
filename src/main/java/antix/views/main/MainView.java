@@ -238,26 +238,51 @@ public class MainView extends VerticalLayout {
                 table { border-collapse: collapse; width: 100%; font-family: monospace; }
                 th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
                 th { background-color: #333; color: white; }
+                td.icon-cell { text-align: center; vertical-align: middle; }
+                img.icon { width: 20px; height: 20px; display: block; margin: auto; }
             </style>
         """);
 
         builder.append("<div style='font-family:monospace;margin-bottom:5px;'>")
-               .append("Page ").append(currentPage + 1).append("/").append(totalPages)
-               .append(" — ").append(currentPosts.size()).append(" posts")
-               .append("</div>");
+            .append("Page ").append(currentPage + 1).append("/").append(totalPages)
+            .append(" — ").append(currentPosts.size()).append(" posts")
+            .append("</div>");
 
         builder.append("""
             <table>
-                <tr><th>#</th><th>Auteur</th><th>Date</th><th>Contenu</th><th>Likes</th></tr>
+                <tr><th>#</th><th>Réseau</th><th>Auteur</th><th>Date</th><th>Contenu</th><th>Likes</th></tr>
         """);
 
         for (int i = start; i < end; i++) {
             Post post = currentPosts.get(i);
+
+            String iconUrl = post.fromReddit()
+                    ? "assets/reddit-icon.png"
+                    : "assets/mastodon-icon.svg";
+
+            String contenu = Jsoup.parse(post.getContent()).text();;
+            if (post.fromReddit()) {
+                String titre = ((RedditPost) post).getTitle();
+
+                if (contenu != null && !contenu.trim().isEmpty()) {
+                    contenu = titre + " | " + contenu;
+                } else {
+                    contenu = titre;
+                }
+            }
+
+            // on retire les sauts de lignes
+            contenu.replaceAll("[\\n\\r]+", " ");
+            int maxLength = 100;
+            if (contenu.length() > maxLength) {
+                contenu = contenu.substring(0, maxLength - 3).trim() + "...";
+            }
             builder.append("<tr>")
                     .append("<td>").append(i + 1).append("</td>")
+                    .append("<td class='icon-cell'><img class='icon' src='").append(iconUrl).append("'/></td>")
                     .append("<td>").append(post.getAuthor()).append("</td>")
                     .append("<td>").append(post.getCreatedAt().format(DATE_FORMATTER)).append("</td>")
-                    .append("<td>").append(post.fromReddit() ? ((RedditPost) post).getTitle() : post.getContent()).append("</td>")
+                    .append("<td>").append(contenu).append("</td>")
                     .append("<td>").append(post.getLikes()).append("</td>")
                     .append("</tr>");
         }
@@ -265,6 +290,7 @@ public class MainView extends VerticalLayout {
         builder.append("</table>");
         output.getElement().setProperty("innerHTML", builder.toString());
     }
+
 
     private void renderCurrentPost() {
         if (currentPosts.isEmpty()) {
