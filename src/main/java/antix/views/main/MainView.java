@@ -68,14 +68,14 @@ public class MainView extends VerticalLayout {
             try {
                String key = e.getEventData().getString("event.key");
 
-                if ("ArrowUp".equals(key)) {
+                if (keyIsEqual(key, "ArrowUp")) {
                     if (!commandHistory.isEmpty()) {
                         historyIndex = Math.max(0, historyIndex - 1);
                         internalChange.set(true);
                         prompt.setValue(commandHistory.get(historyIndex));
                         internalChange.set(false);
                     }
-                } else if ("ArrowDown".equals(key)) {
+                } else if (keyIsEqual(key, "ArrowDown")) {
                     if (!commandHistory.isEmpty()) {
                         historyIndex = Math.min(commandHistory.size(), historyIndex + 1);
                         internalChange.set(true);
@@ -86,11 +86,11 @@ public class MainView extends VerticalLayout {
                         }
                         internalChange.set(false);
                     }
-                } else if ("ArrowLeft".equals(key)) {
+                } else if (keyIsEqual(key,"ArrowLeft")) {
                     navigatePage(-1);
-                } else if ("ArrowRight".equals(key)) {
+                } else if (keyIsEqual(key, "ArrowRight")) {
                     navigatePage(1);
-                } else if ("Enter".equals(key)) {
+                } else if (keyIsEqual(key,"Enter")) {
                     String text = prompt.getValue().trim();
 
                     if (!text.isEmpty()) {
@@ -164,27 +164,10 @@ public class MainView extends VerticalLayout {
                     .map(String::toLowerCase)
                     .collect(Collectors.toList());
 
-            List<Post> results = new ArrayList<>();
-            for (String tag : tags) {
-                results.addAll(fetchMastodonPostsFromTag(tag));
-                results.addAll(fetchRedditPostsFromTag(tag));
-            }
-            List<Post> filtered = results.stream()
-                .filter(post -> {
-                    final String[] textContent = {Jsoup.parse(post.getContent()).text().toLowerCase().trim()};
-
-                    if (post.fromReddit()) {
-                        textContent[0] += " " + ((RedditPost) post).getTitle().toLowerCase().trim();
-                    }
-
-                    return isAnd
-                            ? tags.stream().allMatch(tag -> textContent[0].contains(tag))
-                            : tags.stream().anyMatch(tag -> textContent[0].contains(tag));
-                })
-                .collect(Collectors.toList());
-            filtered.sort(Comparator.comparing(Post::getCreatedAt).reversed());
-
-            currentPosts = filtered;
+            currentPosts = new ArrayList<>();
+            currentPosts.addAll(fetchPostsFromMastodon(tags, isAnd));
+            currentPosts.addAll(fetchPostsFromReddit(tags, isAnd));
+            currentPosts.sort(Comparator.comparing(Post::getCreatedAt).reversed());
             currentIndex = 0;
             currentPage = 0;
             displayPostSummary();
@@ -220,6 +203,8 @@ public class MainView extends VerticalLayout {
             output.setText("Aucun post à naviguer.");
         }
     }
+
+    
 
     private void navigatePage(int offset) {
         int maxPage = (int) Math.ceil(currentPosts.size() / (double) PAGE_SIZE);
@@ -285,12 +270,15 @@ public class MainView extends VerticalLayout {
             if (!post.fromReddit() || url.contains("preview")) mediaURL.append(url).append("<br>");
         }
 
+        String subreddit = post instanceof RedditPost ? "<b>Subreddit :</b> r/" + ((RedditPost) post).getSubreddit() + "<br>" : "";
+
 
         output.getElement().setProperty("innerHTML",
             "<p style='font-family:monospace;'>" +
             "<b>Post :</b> " + (currentIndex + 1) + "/" + currentPosts.size() + "<br>" +
             "<b>Auteur :</b> @" + post.getAuthor() + "<br>" +
-            "<b>Date :</b> " + post.getCreatedAt().format(DATE_FORMATTER) + "<br>" +
+            subreddit +
+            "<b>Date :</b> " + post.getCreatedAt().format(DATE_FORMATTER) + "<br><br>" +
             titre +
             contenu +
             "<b>Likes :</b> " + post.getLikes() + "<br>" +
@@ -298,6 +286,40 @@ public class MainView extends VerticalLayout {
             mediaURL +
             "</p>"
         );
+    }
+
+    private List<Post> fetchPostsFromMastodon(List<String> tags, boolean isAnd) {
+        List<Post> mastodonResults = new ArrayList<>();
+        for (String tag : tags) {
+            mastodonResults.addAll(fetchMastodonPostsFromTag(tag));
+        }
+        return filterPost(mastodonResults, tags, isAnd);
+    }
+
+    private List<Post> fetchPostsFromReddit(List<String> tags, boolean isAnd) {
+        List<Post> redditResults = new ArrayList<>();
+        for (String tag : tags) {
+            redditResults.addAll(fetchRedditPostsFromTag(tag));
+        }
+        return filterPost(redditResults, tags, isAnd);
+    }
+
+    private List<Post> filterPost(List<Post> posts, List<String> tags, boolean isAnd) {
+        posts = posts.stream()
+                .filter(post -> {
+                    final String[] textContent = {Jsoup.parse(post.getContent()).text().toLowerCase().trim()};
+
+                    if (post.fromReddit()) {
+                        textContent[0] += " " + ((RedditPost) post).getTitle().toLowerCase().trim();
+                    }
+
+                    return isAnd
+                            ? tags.stream().allMatch(tag -> textContent[0].contains(tag))
+                            : tags.stream().anyMatch(tag -> textContent[0].contains(tag));
+                })
+                .collect(Collectors.toList());
+        posts.sort(Comparator.comparing(Post::getCreatedAt).reversed());
+        return posts.subList(0, posts.size() < 15 * tags.size() ? posts.size() : 15 * tags.size());
     }
 
     public List<MastodonPost> fetchMastodonPostsFromTag(String tag) {
@@ -336,11 +358,11 @@ public class MainView extends VerticalLayout {
 
             URL url = uri.toURL();
             
-            JsonNode rootNode = getURLResponse(url);
-            JsonNode postsNode = rootNode.path("data").path("children");
-
+            JsonNode postsNode = getURLResponse(url)
+                .path("data")
+                .path("children");
+                
             List<RedditPost> posts = new ArrayList<>();
-
             for (JsonNode postNode : postsNode) {
                 RedditPost redditPost = new RedditPost(postNode);
                 posts.add(redditPost);
@@ -378,6 +400,10 @@ public class MainView extends VerticalLayout {
                 <tr><td><code>help</code></td><td>Afficher cette aide</td></tr>
             </table>
         """;
+    }
+
+    private boolean keyIsEqual(String key, String input) {
+        return key.equals(input);
     }
 
     private JsonNode getURLResponse(URL url) {
