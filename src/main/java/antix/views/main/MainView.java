@@ -23,6 +23,7 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -160,22 +161,13 @@ public class MainView extends VerticalLayout {
             toggle_nsfw(false);
         } else if (text.startsWith("s ")) {
             String query = text.substring(2).trim();
-
             boolean isAnd = query.contains("&");
-            String[] rawTags = isAnd ? query.split("&") : query.split(" ");
-
-            List<String> tags = Arrays.stream(rawTags)
-                    .map(String::trim)
-                    .filter(s -> !s.isEmpty())
-                    .map(String::toLowerCase)
-                    .collect(Collectors.toList());
-
+            
+            List<String> tags = getTagsFromQuery(query, isAnd);
             currentPosts = new ArrayList<>();
-            currentPosts.addAll(fetchPostsFromMastodon(tags, isAnd));
-            currentPosts.addAll(fetchPostsFromReddit(tags, isAnd));
-            currentPosts.sort(Comparator.comparing(Post::getCreatedAt).reversed());
-            currentIndex = 0;
-            currentPage = 0;
+            addPostsFromSocialMedia(currentPosts, tags, isAnd);
+
+            
             displayPostSummary();
         } else if (text.startsWith("view")) {
             try {
@@ -224,6 +216,9 @@ public class MainView extends VerticalLayout {
     }
 
     private void displayPostSummary() {
+        currentIndex = 0;
+        currentPage = 0;
+
         if (currentPosts.isEmpty()) {
             output.setText("Aucun post trouvé.");
             return;
@@ -281,7 +276,7 @@ public class MainView extends VerticalLayout {
                     .append("<td>").append(i + 1).append("</td>")
                     .append("<td class='icon-cell'><img class='icon' src='").append(iconUrl).append("'/></td>")
                     .append("<td>").append(post.getAuthor()).append("</td>")
-                    .append("<td>").append(post.getCreatedAt().format(DATE_FORMATTER)).append("</td>")
+                    .append("<td>").append(formatterDate(post.getCreatedAt())).append("</td>")
                     .append("<td>").append(contenu).append("</td>")
                     .append("<td>").append(post.getNumComments()).append("</td>")
                     .append("<td>").append(post.getLikes()).append("</td>")
@@ -316,7 +311,7 @@ public class MainView extends VerticalLayout {
             "<b>Post :</b> " + (currentIndex + 1) + "/" + currentPosts.size() + "<br>" +
             "<b>Auteur :</b> @" + post.getAuthor() + "<br>" +
             subreddit +
-            "<b>Date :</b> " + post.getCreatedAt().format(DATE_FORMATTER) + "<br><br>" +
+            "<b>Date :</b> " + formatterDate(post.getCreatedAt()) + "<br><br>" +
             titre +
             contenu +
             "<b>Likes :</b> " + post.getLikes() + "<br>" +
@@ -327,6 +322,20 @@ public class MainView extends VerticalLayout {
         );
     }
 
+    private List<String> getTagsFromQuery(String query, boolean isAnd) {
+        String[] rawTags = isAnd ? query.split("&") : query.split(" ");
+        return Arrays.stream(rawTags)
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .map(String::toLowerCase)
+            .collect(Collectors.toList());
+
+    }
+    private void addPostsFromSocialMedia(List<Post> posts, List<String> tags, boolean isAnd) {
+        currentPosts.addAll(fetchPostsFromMastodon(tags, isAnd));
+        currentPosts.addAll(fetchPostsFromReddit(tags, isAnd));
+        currentPosts.sort(Comparator.comparing(Post::getCreatedAt).reversed());
+    }
     private List<Post> fetchPostsFromMastodon(List<String> tags, boolean isAnd) {
         List<Post> mastodonResults = new ArrayList<>();
         for (String tag : tags) {
@@ -380,7 +389,7 @@ public class MainView extends VerticalLayout {
                 posts.add(mastodonPost);
             }
 
-            posts.sort(Comparator.comparing(MastodonPost::getLikes).reversed());
+            posts.sort(Comparator.comparing(MastodonPost::getCreatedAt).reversed());
             return posts.subList(0, posts.size() < 15 ? posts.size() : 15);
 
         } catch (Exception e) {
@@ -412,7 +421,7 @@ public class MainView extends VerticalLayout {
                 RedditPost redditPost = new RedditPost(postNode);
                 posts.add(redditPost);
             }
-            posts.sort(Comparator.comparing(RedditPost::getLikes).reversed());
+            posts.sort(Comparator.comparing(RedditPost::getCreatedAt).reversed());
             return posts.subList(0, posts.size() < 15 ? posts.size() : 15);
 
         } catch (Exception e) {
@@ -476,5 +485,9 @@ public class MainView extends VerticalLayout {
             System.err.println("Erreur lors de la récupération des données : ".concat(e.getMessage()));
             return null;
         }
+    }
+
+    private String formatterDate(ZonedDateTime time) {
+        return time.format(DATE_FORMATTER);
     }
 }
