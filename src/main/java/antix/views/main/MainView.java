@@ -250,7 +250,7 @@ public class MainView extends VerticalLayout {
 
         builder.append("""
             <table>
-                <tr><th>#</th><th>Réseau</th><th>Auteur</th><th>Date</th><th>Contenu</th><th>Likes</th></tr>
+                <tr><th>#</th><th>Réseau</th><th>Auteur</th><th>Date</th><th>Contenu</th><th>Comments</th><th>Likes</th></tr>
         """);
 
         for (int i = start; i < end; i++) {
@@ -283,6 +283,7 @@ public class MainView extends VerticalLayout {
                     .append("<td>").append(post.getAuthor()).append("</td>")
                     .append("<td>").append(post.getCreatedAt().format(DATE_FORMATTER)).append("</td>")
                     .append("<td>").append(contenu).append("</td>")
+                    .append("<td>").append(post.getNumComments()).append("</td>")
                     .append("<td>").append(post.getLikes()).append("</td>")
                     .append("</tr>");
         }
@@ -319,6 +320,7 @@ public class MainView extends VerticalLayout {
             titre +
             contenu +
             "<b>Likes :</b> " + post.getLikes() + "<br>" +
+            "<b>Replies :</b> " + post.getNumComments() + "<br>" +
             "<b>URL :</b> " + post.getUrl() + "<br>" +
             mediaURL +
             "</p>"
