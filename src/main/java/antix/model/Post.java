@@ -2,6 +2,7 @@ package antix.model;
 
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Set;
 
 import lombok.Data;
 
@@ -15,8 +16,10 @@ public abstract class Post {
     private List<String> mediaUrl;
     private int likes;
     private int numComments;
+    private boolean isNSFW;
+    private String rating;
 
-    public Post(String id, ZonedDateTime createdAt, String author, String content, String url, List<String> mediaUrl, int likes, int numComments) {
+    public Post(String id, ZonedDateTime createdAt, String author, String content, String url, List<String> mediaUrl, int likes, int numComments, boolean isNSFW, Set<String> EXPLICIT_WORDS) {
         this.id = id;
         this.createdAt = createdAt;
         this.author = author;
@@ -25,6 +28,8 @@ public abstract class Post {
         this.mediaUrl = mediaUrl;
         this.likes = likes;
         this.numComments = numComments;
+        this.isNSFW = isNSFW;
+        this.rating = ratePostLevel(EXPLICIT_WORDS);
     }
 
     @Override
@@ -41,5 +46,28 @@ public abstract class Post {
 
     public boolean fromReddit() {
         return getPostType().equals("RedditPost");
+    }
+
+    public String ratePostLevel(Set<String> EXPLICIT_WORDS) {
+        if (this.isNSFW) {
+            return "E"; // Explicit
+        }
+
+        String content = this.content != null ? this.content : "";
+
+        if (this instanceof RedditPost) {
+            RedditPost redditPost = (RedditPost) this;
+            content += " " + redditPost.getTitle();
+        }
+
+        content = content.toLowerCase();
+
+        for (String explicitWord : EXPLICIT_WORDS) {
+            if (content.contains(explicitWord)) {
+                return "Q"; // Questionnable
+            }
+        }
+
+        return "S"; // Safe
     }
 }

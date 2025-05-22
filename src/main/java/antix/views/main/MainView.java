@@ -3,6 +3,7 @@ package antix.views.main;
 import antix.model.MastodonPost;
 import antix.model.Post;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -18,6 +19,7 @@ import org.jsoup.Jsoup;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URI;
@@ -46,12 +48,34 @@ public class MainView extends VerticalLayout {
 
     private int currentPage = 0;
     private static final int PAGE_SIZE = 10;
+    private static final int maxPostPerMedia = 20;
+    private static final String PostPerMedia = "60";
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yy 'à' HH:mm");
 
+    private static final Set<String> EXPLICIT_WORDS = new HashSet<>();
+
+    static {
+        ObjectMapper mapper = new ObjectMapper();
+        try (InputStream is = Post.class.getClassLoader().getResourceAsStream("explicit_words.json")) {
+            if (is == null) {
+                System.err.println("Erreur : explicit_words.json introuvable dans le classpath !");
+            } else {
+                java.util.Map<String, List<String>> data = mapper.readValue(is, new TypeReference<java.util.Map<String, List<String>>>() {});
+                if (data != null && data.containsKey("EXPLICIT_WORDS")) {
+                    EXPLICIT_WORDS.addAll(data.get("EXPLICIT_WORDS"));
+                } else {
+                    System.err.println("Erreur : La clé 'EXPLICIT_WORDS' est manquante ou vide dans le fichier JSON.");
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Erreur lors du chargement de explicit_words.json: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
     public MainView() {
         setSizeFull();
-
         output = new Div();
         output.getStyle().set("white-space", "pre-wrap");
         output.getStyle().set("overflow-y", "auto");
@@ -235,6 +259,9 @@ public class MainView extends VerticalLayout {
                 th { background-color: #333; color: white; }
                 td.icon-cell { text-align: center; vertical-align: middle; }
                 img.icon { width: 20px; height: 20px; display: block; margin: auto; }
+                .rating-S { color: green; font-weight: bold; }
+                .rating-Q { color: orange; font-weight: bold; } /* Changed from yellow for better visibility */
+                .rating-E { color: red; font-weight: bold; }
             </style>
         """);
 
@@ -245,7 +272,7 @@ public class MainView extends VerticalLayout {
 
         builder.append("""
             <table>
-                <tr><th>#</th><th>Réseau</th><th>Auteur</th><th>Date</th><th>Contenu</th><th>Comments</th><th>Likes</th></tr>
+                <tr><th>#</th><th>Réseau</th><th>Auteur</th><th>Date</th><th>Contenu</th><th>Rating</th><th>Comments</th><th>Likes</th></tr>
         """);
 
         for (int i = start; i < end; i++) {
@@ -255,7 +282,7 @@ public class MainView extends VerticalLayout {
                     ? "assets/reddit-icon.png"
                     : "assets/mastodon-icon.svg";
 
-            String contenu = Jsoup.parse(post.getContent()).text();;
+            String contenu = Jsoup.parse(post.getContent()).text();
             if (post.fromReddit()) {
                 String titre = ((RedditPost) post).getTitle();
 
@@ -272,12 +299,27 @@ public class MainView extends VerticalLayout {
             if (contenu.length() > maxLength) {
                 contenu = contenu.substring(0, maxLength - 3).trim() + "...";
             }
+
+            String ratingClass = "";
+            switch (post.getRating()) {
+                case "S":
+                    ratingClass = "rating-S";
+                    break;
+                case "Q":
+                    ratingClass = "rating-Q";
+                    break;
+                case "E":
+                    ratingClass = "rating-E";
+                    break;
+            }
+
             builder.append("<tr>")
                     .append("<td>").append(i + 1).append("</td>")
                     .append("<td class='icon-cell'><img class='icon' src='").append(iconUrl).append("'/></td>")
                     .append("<td>").append(post.getAuthor()).append("</td>")
                     .append("<td>").append(formatterDate(post.getCreatedAt())).append("</td>")
                     .append("<td>").append(contenu).append("</td>")
+                    .append("<td class='").append(ratingClass).append("'>").append(post.getRating()).append("</td>")
                     .append("<td>").append(post.getNumComments()).append("</td>")
                     .append("<td>").append(post.getLikes()).append("</td>")
                     .append("</tr>");
@@ -294,6 +336,7 @@ public class MainView extends VerticalLayout {
             return;
         }
 
+
         Post post = currentPosts.get(currentIndex);
         String titre = post instanceof RedditPost ? "<b>Titre :</b> " + ((RedditPost) post).getTitle() + "<br>" : "";
         String contenu = post.getContent().isEmpty() ? "" : "<b>Contenu :</b><br>" + Jsoup.parse(post.getContent()).text() + "<br>";
@@ -307,6 +350,13 @@ public class MainView extends VerticalLayout {
 
 
         output.getElement().setProperty("innerHTML",
+            """
+            <style>
+                .rating-S { color: green; font-weight: bold; }
+                .rating-Q { color: orange; font-weight: bold; }
+                .rating-E { color: red; font-weight: bold; }
+            </style>
+            """ +
             "<p style='font-family:monospace;'>" +
             "<b>Post :</b> " + (currentIndex + 1) + "/" + currentPosts.size() + "<br>" +
             "<b>Auteur :</b> @" + post.getAuthor() + "<br>" +
@@ -314,6 +364,7 @@ public class MainView extends VerticalLayout {
             "<b>Date :</b> " + formatterDate(post.getCreatedAt()) + "<br><br>" +
             titre +
             contenu +
+            "<b>Rating :</b><span class='rating-" + post.getRating() + "'> " + post.getRating() + "</span><br>" +
             "<b>Likes :</b> " + post.getLikes() + "<br>" +
             "<b>Replies :</b> " + post.getNumComments() + "<br>" +
             "<b>URL :</b> " + post.getUrl() + "<br>" +
@@ -367,14 +418,14 @@ public class MainView extends VerticalLayout {
                 })
                 .collect(Collectors.toList());
         posts.sort(Comparator.comparing(Post::getCreatedAt).reversed());
-        return posts.subList(0, posts.size() < 15 * tags.size() ? posts.size() : 15 * tags.size());
+        return posts.subList(0, posts.size() < maxPostPerMedia * tags.size() ? posts.size() : maxPostPerMedia * tags.size());
     }
 
     public List<MastodonPost> fetchMastodonPostsFromTag(String tag, boolean allowNsfw) {
         if (StringUtils.isEmpty(tag)) return List.of();
         try {
             var uri = new URIBuilder("https://mastodon.social/api/v1/timelines/tag/" + tag)
-                    .addParameter("limit", "50")
+                    .addParameter("limit", PostPerMedia)
                     .build();
             URL url = uri.toURL();
             
@@ -385,12 +436,12 @@ public class MainView extends VerticalLayout {
                 boolean isSensitive = postNode.path("sensitive").asBoolean(false);
                 if (!allowNsfw && isSensitive) continue;
 
-                MastodonPost mastodonPost = new MastodonPost(postNode);
+                MastodonPost mastodonPost = new MastodonPost(postNode, EXPLICIT_WORDS);
                 posts.add(mastodonPost);
             }
 
             posts.sort(Comparator.comparing(MastodonPost::getCreatedAt).reversed());
-            return posts.subList(0, posts.size() < 15 ? posts.size() : 15);
+            return posts.subList(0, posts.size() < maxPostPerMedia ? posts.size() : maxPostPerMedia);
 
         } catch (Exception e) {
             output.setText("Erreur de récupération : " + e.getMessage());
@@ -404,7 +455,7 @@ public class MainView extends VerticalLayout {
             // Construire l'URL avec URIBuilder
             URI uri = new URIBuilder("https://www.reddit.com/search.json")
                     .addParameter("q", tag)
-                    .addParameter("limit", String.valueOf(50))
+                    .addParameter("limit", PostPerMedia)
                     .build();
 
             URL url = uri.toURL();
@@ -418,11 +469,11 @@ public class MainView extends VerticalLayout {
                 boolean isNsfw = postNode.path("over_18").asBoolean(false);
                 if (!allowNsfw && isNsfw) continue;
 
-                RedditPost redditPost = new RedditPost(postNode);
+                RedditPost redditPost = new RedditPost(postNode, EXPLICIT_WORDS);
                 posts.add(redditPost);
             }
             posts.sort(Comparator.comparing(RedditPost::getCreatedAt).reversed());
-            return posts.subList(0, posts.size() < 15 ? posts.size() : 15);
+            return posts.subList(0, posts.size() < maxPostPerMedia ? posts.size() : maxPostPerMedia);
 
         } catch (Exception e) {
             output.setText("Erreur de récupération : " + e.getMessage());

@@ -9,6 +9,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -16,7 +17,7 @@ public class RedditPost extends Post {
     private String subreddit;
     private String title;
 
-    public RedditPost(JsonNode postNode) {
+    public RedditPost(JsonNode postNode, Set<String> EXPLICIT_WORDS) {
         super(
             postNode.path("data").path("id").asText(),
             ZonedDateTime.ofInstant(Instant.ofEpochSecond(postNode.path("data").path("created_utc").asLong()), ZoneId.of("UTC")),
@@ -25,10 +26,13 @@ public class RedditPost extends Post {
             "https://www.reddit.com" + postNode.path("data").path("permalink").asText(),
             getAttachmentsURL(postNode),
             postNode.path("data").path("ups").asInt(),
-            postNode.path("data").path("num_comments").asInt()
+            postNode.path("data").path("num_comments").asInt(),
+            postNode.path("over_18").asBoolean(false),
+            EXPLICIT_WORDS
         );
         this.subreddit = postNode.path("data").path("subreddit").asText();
         this.title = postNode.path("data").path("title").asText();
+        this.setRating(ratePostLevel(EXPLICIT_WORDS));
     }
 
     private static List<String> getAttachmentsURL(JsonNode postNode) {

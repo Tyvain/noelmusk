@@ -6,13 +6,14 @@ import lombok.Data;
 
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Set;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class MastodonPost extends Post {
     private String visibility;
 
-    public MastodonPost(JsonNode postNode) {
+    public MastodonPost(JsonNode postNode, Set<String> EXPLICIT_WORDS) {
         super(
             postNode.path("id").asText(),
             ZonedDateTime.parse(postNode.path("created_at").asText()), // Conversion en ZonedDateTime
@@ -21,7 +22,9 @@ public class MastodonPost extends Post {
             postNode.path("url").asText(),
             getAttachmentsURL(postNode),
             postNode.path("favourites_count").asInt(), // Likes
-            postNode.path("replies_count").asInt() // Commentaires
+            postNode.path("replies_count").asInt(), // Commentaires
+            postNode.path("sensitive").asBoolean(false),
+            EXPLICIT_WORDS
         );
         this.visibility = postNode.path("visibility").asText();
     }
