@@ -31,6 +31,8 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import antix.model.RedditPost;
@@ -45,12 +47,17 @@ public class MainView extends VerticalLayout {
 
     private final List<String> commandHistory = new ArrayList<>();
     private int historyIndex = -1;
+    // Regex to extract tags, comments, and likes
+    private Pattern pattern = Pattern.compile("^(.*?)(?:\\s-c\\s*(\\d+))?(?:\\s-l\\s*(\\d+))?$");
+    private Matcher matcher;
 
     private int currentPage = 0;
     private static final int MAX_LENGTH = 75;
     private static final int PAGE_SIZE = 10;
     private static final int maxPostPerMedia = 20;
     private static final String PostPerMedia = "60";
+    private int minComments = 0;
+    private int  minLikes = 0;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yy 'à' HH:mm");
 
@@ -187,12 +194,32 @@ public class MainView extends VerticalLayout {
         } else if (text.equals("unallow nsfw")) {
             toggle_nsfw(false);
         } else if (text.startsWith("s ")) {
+            minLikes = 0;
+            minComments = 0;
+
             String query = text.substring(2).trim();
             boolean isAnd = query.contains("&");
             
+            matcher = pattern.matcher(query);
+            if (matcher.matches()) {
+                try {
+                    query = matcher.group(1);
+                    if (matcher.group(2) != null) {
+                        minComments = Integer.parseInt(matcher.group(2));
+                    }
+                } catch (NumberFormatException e) {}
+
+                // Tentative de parsing pour minLikes
+                try {
+                    if (matcher.group(3) != null) {
+                        minLikes = Integer.parseInt(matcher.group(3));
+                    }
+                } catch (NumberFormatException e) {}
+            }
+
             List<String> tags = getTagsFromQuery(query, isAnd);
             currentPosts = new ArrayList<>();
-            addPostsFromSocialMedia(currentPosts, tags, isAnd);
+            addPostsFromSocialMedia(currentPosts, tags, isAnd, minLikes, minComments);
 
             currentIndex = 0;
             currentPage = 0;            
@@ -382,23 +409,23 @@ public class MainView extends VerticalLayout {
             .collect(Collectors.toList());
 
     }
-    private void addPostsFromSocialMedia(List<Post> posts, List<String> tags, boolean isAnd) {
-        currentPosts.addAll(fetchPostsFromMastodon(tags, isAnd));
-        currentPosts.addAll(fetchPostsFromReddit(tags, isAnd));
+    private void addPostsFromSocialMedia(List<Post> posts, List<String> tags, boolean isAnd, int minLikes, int minComments) {
+        currentPosts.addAll(fetchPostsFromMastodon(tags, isAnd, minLikes, minComments));
+        currentPosts.addAll(fetchPostsFromReddit(tags, isAnd, minLikes, minComments));
         currentPosts.sort(Comparator.comparing(Post::getCreatedAt).reversed());
     }
-    private List<Post> fetchPostsFromMastodon(List<String> tags, boolean isAnd) {
+    private List<Post> fetchPostsFromMastodon(List<String> tags, boolean isAnd, int minLikes, int minComments) {
         List<Post> mastodonResults = new ArrayList<>();
         for (String tag : tags) {
-            mastodonResults.addAll(fetchMastodonPostsFromTag(tag, allowNsfw));
+            mastodonResults.addAll(fetchMastodonPostsFromTag(tag, allowNsfw, minLikes, minComments));
         }
         return filterPost(mastodonResults, tags, isAnd);
     }
 
-    private List<Post> fetchPostsFromReddit(List<String> tags, boolean isAnd) {
+    private List<Post> fetchPostsFromReddit(List<String> tags, boolean isAnd, int minLikes, int minComments) {
         List<Post> redditResults = new ArrayList<>();
         for (String tag : tags) {
-            redditResults.addAll(fetchRedditPostsFromTag(tag, allowNsfw));
+            redditResults.addAll(fetchRedditPostsFromTag(tag, allowNsfw, minLikes, minComments));
         }
         return filterPost(redditResults, tags, isAnd);
     }
@@ -421,7 +448,7 @@ public class MainView extends VerticalLayout {
         return posts.subList(0, posts.size() < maxPostPerMedia * tags.size() ? posts.size() : maxPostPerMedia * tags.size());
     }
 
-    public List<MastodonPost> fetchMastodonPostsFromTag(String tag, boolean allowNsfw) {
+    public List<MastodonPost> fetchMastodonPostsFromTag(String tag, boolean allowNsfw, int minLikes, int minComments) {
         if (StringUtils.isEmpty(tag)) return List.of();
         try {
             var uri = new URIBuilder("https://mastodon.social/api/v1/timelines/tag/" + tag)
@@ -437,7 +464,8 @@ public class MainView extends VerticalLayout {
                 if (!allowNsfw && isSensitive) continue;
 
                 MastodonPost mastodonPost = new MastodonPost(postNode, EXPLICIT_WORDS);
-                posts.add(mastodonPost);
+                if (!allowNsfw && mastodonPost.isNSFW()) continue;
+                else if (mastodonPost.getLikes() >= minLikes && mastodonPost.getNumComments() >= minComments) posts.add(mastodonPost);
             }
 
             posts.sort(Comparator.comparing(MastodonPost::getCreatedAt).reversed());
@@ -449,7 +477,7 @@ public class MainView extends VerticalLayout {
         }
     }
 
-    public List<RedditPost> fetchRedditPostsFromTag(String tag, boolean allowNsfw) {
+    public List<RedditPost> fetchRedditPostsFromTag(String tag, boolean allowNsfw, int minLikes, int minComments) {
         if (StringUtils.isEmpty(tag)) return List.of();
         try {
             // Construire l'URL avec URIBuilder
@@ -470,7 +498,8 @@ public class MainView extends VerticalLayout {
                 if (!allowNsfw && isNsfw) continue;
 
                 RedditPost redditPost = new RedditPost(postNode, EXPLICIT_WORDS);
-                posts.add(redditPost);
+                if (!allowNsfw && redditPost.isNSFW()) continue;
+                else if (redditPost.getLikes() >= minLikes && redditPost.getNumComments() >= minComments) posts.add(redditPost);
             }
             posts.sort(Comparator.comparing(RedditPost::getCreatedAt).reversed());
             return posts.subList(0, posts.size() < maxPostPerMedia ? posts.size() : maxPostPerMedia);
