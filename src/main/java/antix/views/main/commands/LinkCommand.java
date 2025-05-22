@@ -24,7 +24,15 @@ public class LinkCommand extends Command {
      * @param contentDiv  Zone d'affichage secondaire (feedback lien).
      */
     public LinkCommand(Grid<MastodonPost> grid, Div contentDiv) {
-        super(List.of("l", "link"), "Link", "Copier le lien du post sélectionné dans le presse-papier");
+        super(
+            List.of("l", "link"),
+            "Link",
+            """
+            🔗 l / link
+        
+            💡 Copier le lien du post sélectionné dans le presse-papier
+            """
+        );
         this.grid = grid;
         this.contentDiv = contentDiv;
     }

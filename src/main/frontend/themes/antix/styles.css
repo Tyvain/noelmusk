@@ -8,7 +8,7 @@
 }
 /* Définir la couleur de fond rouge pour les composants Vaadin */
 [theme~="dark"] {
-   --lumo-base-color: black;  
+   --lumo-base-color: #31344b;  
 }
 
 /* Ajout de styles pour les tableaux */
@@ -50,4 +50,49 @@ tr:nth-child(even) {
   font-size: 14px;
 }
 
+.background-waves {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1; /* Toujours derrière tout */
+  overflow: hidden;
+  pointer-events: none; /* Que le fond ne bloque pas les clics */
+  background-color: #31344b; /* ou autre couleur de fond */
+}
 
+
+.custom-grid {
+  position: relative;
+  z-index: 1; /* Pour être AU-DESSUS des vagues */
+  background-color: transparent; /* Fond transparent pour voir les vagues */
+}
+.parallax > use {
+  animation: move-forever 25s cubic-bezier(.55,.5,.45,.5)     infinite;
+}
+.parallax > use:nth-child(1) {
+  animation-delay: -2s;
+  animation-duration: 7s;
+}
+.parallax > use:nth-child(2) {
+  animation-delay: -3s;
+  animation-duration: 10s;
+}
+.parallax > use:nth-child(3) {
+  animation-delay: -4s;
+  animation-duration: 13s;
+}
+.parallax > use:nth-child(4) {
+  animation-delay: -5s;
+  animation-duration: 5s;
+}
+
+@keyframes move-forever {
+  0% {
+   transform: translate3d(-90px,0,0);
+  }
+  100% { 
+    transform: translate3d(85px,0,0);
+  }
+}

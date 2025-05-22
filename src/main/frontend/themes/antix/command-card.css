@@ -1,0 +1,104 @@
+/* Styles pour CommandCard - Version Dark Mode & Pilule */
+.command-card {
+    display: inline-flex;
+    align-items: center;
+    width: 100%; /* Par défaut pleine largeur sur mobile */
+    margin: 6px;
+    padding: 8px 16px;
+    border-radius: 24px;
+    background-color: #2d333b;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease-in-out;
+}
+
+.command-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    background-color: #2d3d4d;
+}
+
+.command-card:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.command-card-title {
+    margin: 0;
+    padding: 0;
+    color: #e6edf3;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-right: 8px;
+}
+
+.command-card-aliases {
+    font-family: 'JetBrains Mono', monospace;
+    background-color: #1f2937;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    color: #58a6ff;
+    margin-right: 8px;
+    white-space: nowrap;
+}
+
+.command-card-description {
+    display: none;
+    color: #8b949e;
+    font-size: 0.8rem;
+    margin: 0;
+    padding: 0;
+}
+
+/* Pour afficher la description au survol */
+.command-card:hover .command-card-description {
+    display: block;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 200px;
+    background-color: #2d3d4d;
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-top: 5px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+    border-left: 3px solid #58a6ff;
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+/* Container pour les commandes (responsive) */
+.command-cards-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    padding: 10px;
+    width: 100%;
+}
+
+/* Responsive design - Tablette (2 colonnes) */
+@media screen and (min-width: 600px) {
+    .command-card {
+        width: calc(50% - 12px); /* 2 colonnes avec marge */
+    }
+}
+
+/* Responsive design - Petit écran (3 colonnes) */
+@media screen and (min-width: 900px) {
+    .command-card {
+        width: calc(33.33% - 12px); /* 3 colonnes avec marge */
+    }
+}
+
+/* Responsive design - Grand écran (4 colonnes) */
+@media screen and (min-width: 1200px) {
+    .command-card {
+        width: calc(25% - 12px); /* 4 colonnes avec marge */
+    }
+}
+
+/* Animation pour l'apparition de la description */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}

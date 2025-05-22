@@ -35,10 +35,18 @@ public class HashtagCommand extends Command {
     public HashtagCommand(Grid<MastodonPost> grid,
             Function<String, List<MastodonPost>> tagFetcher,
             PostSelector selector) {
-        super(List.of("h", "hashtag"), "Hashtag", "h <tag(s)> : recherche avancée avec opérateurs :\n"
-                + "  && (et), || (ou), ! (exclure),\n"
-                + "  likes:>x, reposts:<y, etc.\n"
-                + "Ex: h squeezie && react || video !politique likes:>5");
+            super(
+                List.of("h", "hashtag"),
+                "Hashtag",
+                """
+                #️⃣ h / hashtag <tag(s)>
+            
+                💡 Recherche avancée avec opérateurs :
+                    • && (et), || (ou), ! (exclure)
+                    • likes:>x, reposts:<y, etc.
+                Ex : h squeezie && react || video !politique likes:>5
+                """
+            );   
         this.grid = grid;
         this.tagFetcher = tagFetcher;
         this.selector = selector;
@@ -177,18 +185,4 @@ public class HashtagCommand extends Command {
             default -> posts;
         };
     }
-
-    /**
-     * Description utilisée dans la commande `help`.
-     *
-     * @return Texte d’aide affiché à l’utilisateur.
-     */
-    @Override
-    public String getDescription() {
-        return "h <tag(s)> : recherche avancée avec opérateurs :\n"
-                + "  && (et), || (ou), ! (exclure),\n"
-                + "  likes:>x, reposts:<y, etc.\n"
-                + "Ex: h squeezie && react || video !politique likes:>5";
-    }
-
 }

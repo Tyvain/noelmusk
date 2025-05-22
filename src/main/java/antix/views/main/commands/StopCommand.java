@@ -14,7 +14,15 @@ public class StopCommand extends Command {
      * @param playCommand Référence à la commande Play à contrôler.
      */
     public StopCommand(PlayCommand playCommand) {
-        super(List.of("stop"), "Stop", "stop : arrête la lecture automatique");
+        super(
+            List.of("stop"),
+            "Stop",
+            """
+            ⏹️ stop
+            
+            💡 Arrête la lecture automatique
+            """
+        );
         this.playCommand = playCommand;
     }
 

@@ -35,7 +35,8 @@ public class CommandFactory {
             PostSelector selector,
             List<MastodonPost> favoris,
             Supplier<List<MastodonPost>> resetFetcher,
-            Function<String, List<MastodonPost>> tagFetcher) {
+            Function<String, List<MastodonPost>> tagFetcher,
+            List<String> commandesTapees) {
         Map<String, Command> commands = new LinkedHashMap<>();
 
         addCommands(new ResetCommand(grid, resetFetcher, selector), commands);
@@ -54,9 +55,9 @@ public class CommandFactory {
         addCommands(play, commands);
         addCommands(new StopCommand(play), commands);
         addCommands(new GotoCommand(grid, selector), commands);
-        addCommands(new SortRepliesCommand(grid, selector), commands);
+        addCommands(new SortCommand(grid, selector), commands);
         addCommands(new TagListCommand(grid, contentDiv), commands);
-
+        addCommands(new HistoryCommand(grid, selector, commandesTapees, contentDiv), commands);
         return commands;
     }
 

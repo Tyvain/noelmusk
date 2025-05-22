@@ -26,7 +26,15 @@ public class ContentSearchCommand extends Command {
      * @param selector    Sélecteur de post pour mise en avant.
      */
     public ContentSearchCommand(Grid<MastodonPost> grid, PostSelector selector) {
-        super(List.of("c"), "Content Search", "Recherche un mot dans le contenu des posts.");
+        super(
+            List.of("c"),
+            "Content Search",
+            """
+            🔍 c <mot-clé>
+
+            💡 Recherche un mot dans le contenu des posts
+            """
+        );
         this.grid = grid;
         this.selector = selector;
     }

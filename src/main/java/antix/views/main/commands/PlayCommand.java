@@ -26,7 +26,15 @@ public class PlayCommand extends Command {
      * @param grid Grille contenant les posts.
      */
     public PlayCommand(Grid<MastodonPost> grid) {
-        super(List.of("play"), "Play", "play <n> : Change de post automatiquement toutes les n secondes (rotation circulaire)");
+        super(
+            List.of("play"),
+            "Play",
+            """
+            ▶️ play <n>
+            
+            💡 Change de post automatiquement toutes les n secondes (rotation circulaire)
+            """
+        );
         this.grid = grid;
     }
 

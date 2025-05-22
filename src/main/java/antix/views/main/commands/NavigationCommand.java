@@ -1,6 +1,7 @@
 package antix.views.main.commands;
 
 import antix.model.MastodonPost;
+import antix.utils.FeedbackUtils;
 import antix.utils.GridUtils;
 import antix.views.main.PostSelector;
 
@@ -25,14 +26,23 @@ public abstract class NavigationCommand extends Command {
     @Override
     public void execute(String input) {
         List<MastodonPost> items = GridUtils.fetchAll(grid);
-        if (items.isEmpty())
+        if (items.isEmpty()) {
+            FeedbackUtils.showError("Aucun post disponible.");
             return;
+        }
 
         MastodonPost current = grid.asSingleSelect().getValue();
         MastodonPost target = getTargetPost(items, current);
 
         if (target != null) {
-            selector.selectAndDisplay(target);
+            int index = items.indexOf(target);
+            if (index != -1) {
+                selector.selectAndDisplay(target);
+                grid.scrollToIndex(index); // Fait défiler la grille jusqu'à l'index
+                FeedbackUtils.showSuccess("Post sélectionné : " + (index + 1));
+            }
+        } else {
+            FeedbackUtils.showError("Aucun post correspondant trouvé.");
         }
     }
 }

@@ -2,6 +2,8 @@ package antix.views.main.commands;
 
 import java.util.List;
 
+
+
 public abstract class Command {
     private final List<String> aliases;
     private final String title;

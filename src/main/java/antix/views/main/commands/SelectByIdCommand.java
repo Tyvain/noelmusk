@@ -24,7 +24,15 @@ public class SelectByIdCommand extends Command {
      * @param selector   Interface de sélection/affichage.
      */
     public SelectByIdCommand(Grid<MastodonPost> grid, PostSelector selector) {
-        super(List.of("select"), "Select", "select <id> : sélectionner un post via son identifiant unique");
+        super(
+            List.of("select"),
+            "Select",
+            """
+            🔍 select <id>
+            
+            💡 Sélectionner un post via son identifiant unique
+            """
+        );
         this.grid = grid;
         this.selector = selector;
     }

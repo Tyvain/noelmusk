@@ -22,7 +22,18 @@ public class RandCommand extends NavigationCommand {
      * @param selector Permet d'afficher le post sélectionné.
      */
     public RandCommand(Grid<MastodonPost> grid, PostSelector selector) {
-        super(List.of("rand", "random"), "Rand", "rand / random : sélectionner un post au hasard", grid, selector);
+        super(
+            List.of("rand", "random"),
+            "Rand",
+            """
+            🎲 rand / random
+            
+            💡 Sélectionner un post au hasard parmi ceux affichés.
+            """,
+            grid,
+            selector
+        );
+
     }
 
     /**
