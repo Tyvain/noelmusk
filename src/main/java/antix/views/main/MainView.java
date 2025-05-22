@@ -47,6 +47,7 @@ public class MainView extends VerticalLayout {
     private int historyIndex = -1;
 
     private int currentPage = 0;
+    private static final int MAX_LENGTH = 75;
     private static final int PAGE_SIZE = 10;
     private static final int maxPostPerMedia = 20;
     private static final String PostPerMedia = "60";
@@ -259,9 +260,9 @@ public class MainView extends VerticalLayout {
                 th { background-color: #333; color: white; }
                 td.icon-cell { text-align: center; vertical-align: middle; }
                 img.icon { width: 20px; height: 20px; display: block; margin: auto; }
-                .rating-S { color: green; font-weight: bold; }
-                .rating-Q { color: orange; font-weight: bold; } /* Changed from yellow for better visibility */
-                .rating-E { color: red; font-weight: bold; }
+                .rating-Sûr { color: green; font-weight: bold; }
+                .rating-Sensible { color: orange; font-weight: bold; } /* Changed from yellow for better visibility */
+                .rating-NSFW { color: red; font-weight: bold; }
             </style>
         """);
 
@@ -295,21 +296,20 @@ public class MainView extends VerticalLayout {
 
             // on retire les sauts de lignes
             contenu.replaceAll("[\\n\\r]+", " ");
-            int maxLength = 100;
-            if (contenu.length() > maxLength) {
-                contenu = contenu.substring(0, maxLength - 3).trim() + "...";
+            if (contenu.length() > MAX_LENGTH) {
+                contenu = contenu.substring(0, MAX_LENGTH - 3).trim() + "...";
             }
 
             String ratingClass = "";
             switch (post.getRating()) {
-                case "S":
-                    ratingClass = "rating-S";
+                case "Sûr":
+                    ratingClass = "rating-Sûr";
                     break;
-                case "Q":
-                    ratingClass = "rating-Q";
+                case "Sensible":
+                    ratingClass = "rating-Sensible";
                     break;
-                case "E":
-                    ratingClass = "rating-E";
+                case "NSFW":
+                    ratingClass = "rating-NSFW";
                     break;
             }
 
@@ -352,9 +352,9 @@ public class MainView extends VerticalLayout {
         output.getElement().setProperty("innerHTML",
             """
             <style>
-                .rating-S { color: green; font-weight: bold; }
-                .rating-Q { color: orange; font-weight: bold; }
-                .rating-E { color: red; font-weight: bold; }
+                .rating-Sûr { color: green; font-weight: bold; }
+                .rating-Sensible { color: orange; font-weight: bold; }
+                .rating-NSFW { color: red; font-weight: bold; }
             </style>
             """ +
             "<p style='font-family:monospace;'>" +

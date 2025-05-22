@@ -50,7 +50,7 @@ public abstract class Post {
 
     public String ratePostLevel(Set<String> EXPLICIT_WORDS) {
         if (this.isNSFW) {
-            return "E"; // Explicit
+            return "NSFW"; // NSFW
         }
 
         String content = this.content != null ? this.content : "";
@@ -64,10 +64,11 @@ public abstract class Post {
 
         for (String explicitWord : EXPLICIT_WORDS) {
             if (content.contains(explicitWord)) {
-                return "Q"; // Questionnable
+                if (explicitWord.equals("nsfw")) return "NSFW";
+                return "Sensible"; // Sensible
             }
         }
 
-        return "S"; // Safe
+        return "Sûr"; // Sûr
     }
 }
