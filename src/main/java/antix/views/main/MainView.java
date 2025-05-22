@@ -58,6 +58,8 @@ public class MainView extends VerticalLayout {
         output.setHeight("80vh");
         output.setWidthFull();
 
+        output.setEnabled(false);
+
         var prompt = new TextField();
         prompt.setPlaceholder("Entrez une commande...");
         prompt.setWidthFull();
@@ -167,7 +169,8 @@ public class MainView extends VerticalLayout {
             currentPosts = new ArrayList<>();
             addPostsFromSocialMedia(currentPosts, tags, isAnd);
 
-            
+            currentIndex = 0;
+            currentPage = 0;            
             displayPostSummary();
         } else if (text.startsWith("view")) {
             try {
@@ -216,9 +219,6 @@ public class MainView extends VerticalLayout {
     }
 
     private void displayPostSummary() {
-        currentIndex = 0;
-        currentPage = 0;
-
         if (currentPosts.isEmpty()) {
             output.setText("Aucun post trouvé.");
             return;
