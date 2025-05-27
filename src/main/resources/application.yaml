@@ -11,3 +11,19 @@ vaadin:
   productionMode: @vaadin.production.mode@
   frontend:
     hotdeploy: @vaadin.frontend.hotdeploy@
+
+
+# Pour docker
+# logging:
+#   level:
+#     root: info
+
+# vaadin:
+#   launch-browser: false
+#   allowed-packages: 
+#     - com.vaadin
+#     - org.vaadin
+#     - com
+#   productionMode: true
+#   frontend:
+#     hotdeploy: false
