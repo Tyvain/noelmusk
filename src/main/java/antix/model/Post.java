@@ -64,7 +64,10 @@ public abstract class Post {
 
         for (String explicitWord : EXPLICIT_WORDS) {
             if (content.contains(explicitWord)) {
-                if (explicitWord.equals("nsfw")) return "NSFW";
+                if (explicitWord.equals("nsfw")) {
+                    this.setNSFW(true);
+                    return "NSFW";
+                }
                 return "Sensible"; // Sensible
             }
         }

@@ -193,6 +193,10 @@ public class MainView extends VerticalLayout {
             toggle_nsfw(true);
         } else if (text.equals("unallow nsfw")) {
             toggle_nsfw(false);
+        } else if (text.startsWith("nextpage") || text.startsWith("np")) {
+            navigatePage(1);
+        } else if (text.startsWith("previouspage") || text.startsWith("pp")) {
+            navigatePage(-1);
         } else if (text.startsWith("s ")) {
             minLikes = 0;
             minComments = 0;
@@ -392,8 +396,8 @@ public class MainView extends VerticalLayout {
             titre +
             contenu +
             "<b>Rating :</b><span class='rating-" + post.getRating() + "'> " + post.getRating() + "</span><br>" +
-            "<b>Likes :</b> " + post.getLikes() + "<br>" +
-            "<b>Replies :</b> " + post.getNumComments() + "<br>" +
+            "<b>Likes 👍:</b> " + post.getLikes() + "<br>" +
+            "<b>Commentaires 💬:</b> " + post.getNumComments() + "<br>" +
             "<b>URL :</b> " + post.getUrl() + "<br>" +
             mediaURL +
             "</p>"
@@ -522,17 +526,15 @@ public class MainView extends VerticalLayout {
                 <tr><th>Commande</th><th>Description</th></tr>
                 <tr><td><code>s tag1 & tag2</code></td><td>Recherche avec tous les tags (ET)</td></tr>
                 <tr><td><code>s tag1 tag2</code></td><td>Recherche avec au moins un tag (OU)</td></tr>
-                <tr><td><code>next</code> / <code>n</code></td><td>Post suivant</td></tr>
-                <tr><td><code>previous</code> / <code>p</code></td><td>Post précédent</td></tr>
-                <tr><td><code>list</code> / <code>l</code></td><td>Affiche un sommaire des posts</td></tr>
+                <tr><td><code>next n</code> / <code>previous p</code></td><td>Post suivant / précédent</td></tr>
+                <tr><td><code>nextpage np</code> / <code>previouspage pp</code></td><td>Page suivant / précédent</td></tr>
+                <tr><td><code>list</code> / <code>l</code></td><td>Affiche la liste des résultats des posts</td></tr>
                 <tr><td><code>sort like</code></td><td>Tri décroissant par likes</td></tr>
                 <tr><td><code>sort date</code></td><td>Tri décroissant par date</td></tr>
                 <tr><td><code>goto N</code></td><td>Aller au post numéro N (affichage détaillé)</td></tr>
-                <tr><td><code>view N</code></td><td>Ouvrir le post N dans un nouvel onglet</td></tr>
-                <tr><td><code>view</code></td><td>Ouvrir le post affiché actuellement</td></tr>
+                <tr><td><code>view [N]</code></td><td>Ouvrir le nieme post dans un nouvel onglet. Ouvre le post affiché actuellement par défaut</td></tr>
+                <tr><td><code>allow / unallow nsfw</code></td><td>Afficher / Ne pas afficher les contenus sensibles</td></tr>
                 <tr><td><code>clear</code></td><td>Nettoyer l'affichage</td></tr>
-                <tr><td><code>allow nsfw</code></td><td>Afficher les contenus sensibles</td></tr>
-                <tr><td><code>unallow nsfw</code></td><td>Ne pas afficher les contenus sensibles</td></tr>
                 <tr><td><code>help</code></td><td>Afficher cette aide</td></tr>
             </table>
         """;
