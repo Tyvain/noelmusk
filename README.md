@@ -8,8 +8,8 @@
 
 ## Objectifs initiaux
 
-- Rechercher des hashtags via ligne de commande  
-- Utiliser l’API de Mastodon  
+- Rechercher des tags via ligne de commande  
+- Utiliser l’API de Mastodon et de Reddit
 - Extraire et structurer les données de publication  
 - Identifier les contenus explicites  
 
