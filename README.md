@@ -121,11 +121,11 @@ Permet de :
 
 ## Membres et rôles
 
-- **Olivier TRAM** : Gère le filtre de recherche.  
-- **Olivier DINAN** : Gère le filtre anti-NSFW et la recherche sur Reddit.
-- **Charles-Edouard QUERLIER** : Gère la partie interface de l'application.  
-- **Léo VANHAECKE** : Gère l'hébergement de l'application et la section recherche avancée.
-- **Warren KELEKELE** : Gère l'esthétique de la page 
+- **Olivier TRAM** : Gère le filtre de recherche. - Développeur
+- **Olivier DINAN** : Gère le filtre anti-NSFW et la recherche sur Reddit. - Développeur / Coordinateur
+- **Charles-Edouard QUERLIER** : Gère la partie interface de l'application. - Développeur
+- **Léo VANHAECKE** : Gère l'hébergement de l'application et la section recherche avancée. - Développeur / Hébergeur de serveur
+- **Warren KELEKELE** : Gère l'esthétique de la page - Développeur / Designer
 
 ---
 
