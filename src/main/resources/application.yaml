@@ -3,27 +3,11 @@ logging:
     root: info
 
 vaadin:
-  launch-browser: @vaadin.frontend.hotdeploy@
+  launch-browser: false
   allowed-packages: 
     - com.vaadin
     - org.vaadin
     - com
-  productionMode: @vaadin.production.mode@
+  productionMode: false
   frontend:
-    hotdeploy: @vaadin.frontend.hotdeploy@
-
-
-# Pour docker
-# logging:
-#   level:
-#     root: info
-
-# vaadin:
-#   launch-browser: false
-#   allowed-packages: 
-#     - com.vaadin
-#     - org.vaadin
-#     - com
-#   productionMode: true
-#   frontend:
-#     hotdeploy: false
+    hotdeploy: false
