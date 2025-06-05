@@ -23,7 +23,7 @@
 - Mise en forme sous tableau
 - Fonction de tri des postes par date et like
 - Ajout de la commande ET et OU
-- Page d'acceuil avec un Help
+- Page d'accueil avec un Help
 - Fonction Clear et Historique
 - Navigation avec les fleches pour l'historique et possibilité d'entrer une ancienne commande
 
