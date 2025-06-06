@@ -8,6 +8,6 @@ vaadin:
     - com.vaadin
     - org.vaadin
     - com
-  productionMode: false
+  productionMode: true
   frontend:
     hotdeploy: false
