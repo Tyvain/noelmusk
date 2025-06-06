@@ -119,6 +119,25 @@ Permet de :
 
 ---
 
+## Commandes disponibles
+
+| Commande                         | Description                                                                  |
+|----------------------------------|----------------------------------------------------------------------------- |
+| `s tag1 & tag2`                  | Recherche avec tous les tags (ET)                                            |
+| `s tag1 tag2`                    | Recherche avec au moins un tag (OU)                                          |
+| `next n` / `previous p`          | Post suivant / précédent                                                     |
+| `nextpage np` / `previouspage pp`| Page suivante / précédente                                                   |
+| `list` / `l`                     | Affiche la liste des résultats des posts                                     |
+| `sort like`                      | Tri décroissant par likes                                                    |
+| `sort date`                      | Tri décroissant par date                                                     |
+| `goto N`                         | Aller au post numéro N (affichage détaillé)                                  |
+| `view [N]`                       | Ouvrir le Nième post dans un nouvel onglet. Par défaut, ouvre le post actuel |
+| `allow / unallow nsfw`           | Afficher / Ne pas afficher les contenus sensibles                            |
+| `clear`                          | Nettoyer l'affichage                                                         |
+| `help`                           | Afficher cette aide                                                          |
+
+---
+
 ## Membres et rôles
 
 - **Olivier TRAM** : Gère le filtre de recherche. - Développeur
