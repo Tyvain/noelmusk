@@ -1,6 +1,6 @@
 package antix.views.main.commands;
 
-import antix.model.MastodonPost;
+import antix.model.SocialMediaPost;
 import antix.utils.GridUtils;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.grid.Grid;
@@ -18,14 +18,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class PlayCommand extends Command {
 
     private Timer timer;
-    private final Grid<MastodonPost> grid;
+    private final Grid<SocialMediaPost> grid;
 
     /**
      * Constructeur de la commande Play.
      *
      * @param grid Grille contenant les posts.
      */
-    public PlayCommand(Grid<MastodonPost> grid) {
+    public PlayCommand(Grid<SocialMediaPost> grid) {
         super(
             List.of("play"),
             "Play",
@@ -59,11 +59,11 @@ public class PlayCommand extends Command {
         if (ui == null)
             return;
 
-        List<MastodonPost> items = GridUtils.fetchAll(grid);
+        List<SocialMediaPost> items = GridUtils.fetchAll(grid);
         if (items.isEmpty())
             return;
 
-        MastodonPost current = grid.asSingleSelect().getValue();
+        SocialMediaPost current = grid.asSingleSelect().getValue();
         int startIndex = (current != null) ? items.indexOf(current) : 0;
         AtomicInteger index = new AtomicInteger(startIndex);
 
@@ -72,12 +72,12 @@ public class PlayCommand extends Command {
             @Override
             public void run() {
                 ui.access(() -> {
-                    List<MastodonPost> currentItems = GridUtils.fetchAll(grid); // re-fetch à chaque tick
+                    List<SocialMediaPost> currentItems = GridUtils.fetchAll(grid); // re-fetch à chaque tick
                     if (currentItems.isEmpty())
                         return;
 
                     int i = index.getAndUpdate(val -> (val + 1) % currentItems.size());
-                    MastodonPost post = currentItems.get(i);
+                    SocialMediaPost post = currentItems.get(i);
                     grid.select(post);
                 });
             }

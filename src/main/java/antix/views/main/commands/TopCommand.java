@@ -1,9 +1,8 @@
 package antix.views.main.commands;
 
-import antix.model.MastodonPost;
+import antix.model.SocialMediaPost;
 import antix.views.main.PostSelector;
 import com.vaadin.flow.component.grid.Grid;
-import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -17,7 +16,7 @@ public class TopCommand extends NavigationCommand {
      * @param grid     La grille contenant les posts affichés.
      * @param selector Le sélecteur responsable de l'affichage du post choisi.
      */
-    public TopCommand(Grid<MastodonPost> grid, PostSelector selector) {
+    public TopCommand(Grid<SocialMediaPost> grid, PostSelector selector) {
         super(
             List.of("top"),
             "Top",
@@ -39,7 +38,7 @@ public class TopCommand extends NavigationCommand {
      * @return Le post le plus haut de la page.
      */
     @Override
-    protected MastodonPost getTargetPost(List<MastodonPost> items, MastodonPost current) {
+    protected SocialMediaPost getTargetPost(List<SocialMediaPost> items, SocialMediaPost current) {
         return items.isEmpty() ? null : items.get(0);
     }
 }

@@ -1,6 +1,6 @@
 package antix.factory;
 
-import antix.model.MastodonPost;
+import antix.model.SocialMediaPost;
 import antix.views.main.PostSelector;
 import antix.views.main.commands.*;
 
@@ -18,7 +18,7 @@ import java.util.function.Supplier;
 public class CommandFactory {
 
     /**
-     * Construit l’ensemble des commandes disponibles.
+     * Construit l'ensemble des commandes disponibles.
      *
      * @param grid         Grille d'affichage des posts.
      * @param contentDiv   Div utilisé pour afficher du contenu (HTML,
@@ -30,17 +30,17 @@ public class CommandFactory {
      * @return Map des commandes associées à leurs mots-clés.
      */
     public static Map<String, Command> build(
-            Grid<MastodonPost> grid,
+            Grid<SocialMediaPost> grid,
             Div contentDiv,
             PostSelector selector,
-            List<MastodonPost> favoris,
-            Supplier<List<MastodonPost>> resetFetcher,
-            Function<String, List<MastodonPost>> tagFetcher,
+            List<SocialMediaPost> favoris,
+            Supplier<List<SocialMediaPost>> resetFetcher,
+            Function<String, List<SocialMediaPost>> tagFetcher,
             List<String> commandesTapees) {
         Map<String, Command> commands = new LinkedHashMap<>();
 
         addCommands(new ResetCommand(grid, resetFetcher, selector), commands);
-        addCommands(new RepliesGreaterCommand(grid, selector), commands);
+        addCommands(new FilterCommand(grid, selector), commands);
         addCommands(new SelectByIdCommand(grid, selector), commands);
         addCommands(new ContentSearchCommand(grid, selector), commands);
         addCommands(new HashtagCommand(grid, tagFetcher, selector), commands);
@@ -58,6 +58,7 @@ public class CommandFactory {
         addCommands(new SortCommand(grid, selector), commands);
         addCommands(new TagListCommand(grid, contentDiv), commands);
         addCommands(new HistoryCommand(grid, selector, commandesTapees, contentDiv), commands);
+        addCommands(new OpenCommand(grid, contentDiv), commands);
         return commands;
     }
 

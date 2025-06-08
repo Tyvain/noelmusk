@@ -1,6 +1,6 @@
 package antix.views.main.commands;
 
-import antix.model.MastodonPost;
+import antix.model.SocialMediaPost;
 import antix.model.Tag;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Div;
@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
  * Utile pour identifier les sujets dominants.
  */
 public class TagListCommand extends Command {
-    private final Grid<MastodonPost> grid;
+    private final Grid<SocialMediaPost> grid;
     private final Div contentDiv;
 
     /**
@@ -23,7 +23,7 @@ public class TagListCommand extends Command {
      * @param grid       Grille contenant les posts.
      * @param contentDiv Zone où afficher les résultats.
      */
-    public TagListCommand(Grid<MastodonPost> grid, Div contentDiv) {
+    public TagListCommand(Grid<SocialMediaPost> grid, Div contentDiv) {
         super(
             List.of("taglist"),
             "Tag List",
@@ -45,11 +45,11 @@ public class TagListCommand extends Command {
      */
     @Override
     public void execute(String input) {
-        List<MastodonPost> items = grid.getDataProvider().fetch(new com.vaadin.flow.data.provider.Query<>())
+        List<SocialMediaPost> items = grid.getDataProvider().fetch(new com.vaadin.flow.data.provider.Query<>())
                 .collect(Collectors.toList());
         Map<String, Integer> tagFrequency = new HashMap<>();
 
-        for (MastodonPost post : items) {
+        for (SocialMediaPost post : items) {
             if (post.getTags() != null) {
                 for (Tag tag : post.getTags()) {
                     tagFrequency.put(tag.getName(), tagFrequency.getOrDefault(tag.getName(), 0) + 1);

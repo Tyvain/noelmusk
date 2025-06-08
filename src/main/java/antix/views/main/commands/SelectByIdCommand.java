@@ -1,6 +1,6 @@
 package antix.views.main.commands;
 
-import antix.model.MastodonPost;
+import antix.model.SocialMediaPost;
 import antix.utils.FeedbackUtils;
 import antix.utils.GridUtils;
 import antix.views.main.PostSelector;
@@ -14,7 +14,7 @@ import java.util.List;
  * Utile pour une recherche précise.
  */
 public class SelectByIdCommand extends Command {
-    private final Grid<MastodonPost> grid;
+    private final Grid<SocialMediaPost> grid;
     private final PostSelector selector;
 
     /**
@@ -23,7 +23,7 @@ public class SelectByIdCommand extends Command {
      * @param grid       Grille contenant les posts.
      * @param selector   Interface de sélection/affichage.
      */
-    public SelectByIdCommand(Grid<MastodonPost> grid, PostSelector selector) {
+    public SelectByIdCommand(Grid<SocialMediaPost> grid, PostSelector selector) {
         super(
             List.of("select"),
             "Select",
@@ -50,7 +50,7 @@ public class SelectByIdCommand extends Command {
             return;
         }
 
-        List<MastodonPost> items = GridUtils.fetchAll(grid);
+        List<SocialMediaPost> items = GridUtils.fetchAll(grid);
         boolean found = items.stream()
                 .filter(post -> String.valueOf(post.getId()).equals(id))
                 .findFirst()

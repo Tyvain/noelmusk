@@ -1,6 +1,6 @@
 package antix.views.main.commands;
 
-import antix.model.MastodonPost;
+import antix.model.SocialMediaPost;
 import antix.utils.FeedbackUtils;
 import antix.utils.GridUtils;
 import antix.views.main.PostSelector;
@@ -14,7 +14,7 @@ import java.util.List;
  * Le post ayant le plus de réponses est sélectionné automatiquement.
  */
 public class SortCommand extends Command {
-    private final Grid<MastodonPost> grid;
+    private final Grid<SocialMediaPost> grid;
     private final PostSelector selector;
 
     /**
@@ -23,7 +23,7 @@ public class SortCommand extends Command {
      * @param grid     Grille d'affichage.
      * @param selector Permet d'afficher le post après tri.
      */
-    public SortCommand(Grid<MastodonPost> grid, PostSelector selector) {
+    public SortCommand(Grid<SocialMediaPost> grid, PostSelector selector) {
         super(
                 List.of("sort"),
                 "Sort",
@@ -54,17 +54,17 @@ public class SortCommand extends Command {
             return;
         }
         String param = inputSplit[1];
-        List<MastodonPost> items = GridUtils.fetchAll(grid);
+        List<SocialMediaPost> items = GridUtils.fetchAll(grid);
 
         switch (param) {
             case "replies":
                 items.sort((a, b) -> Integer.compare(b.getRepliesCount(), a.getRepliesCount()));
                 break;
             case "reposts":
-                items.sort((a, b) -> Integer.compare(b.getReblogsCount(), a.getReblogsCount()));
+                items.sort((a, b) -> Integer.compare(b.getShareCount(), a.getShareCount()));
                 break;
             case "likes":
-                items.sort((a, b) -> Integer.compare(b.getFavouritesCount(), a.getFavouritesCount()));
+                items.sort((a, b) -> Integer.compare(b.getLikeCount(), a.getLikeCount()));
                 break;
             default:
                 FeedbackUtils.showError("Paramètre de tri incorrect");

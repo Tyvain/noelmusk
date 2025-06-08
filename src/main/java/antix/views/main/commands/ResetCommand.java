@@ -1,6 +1,7 @@
 package antix.views.main.commands;
 
-import antix.model.MastodonPost;
+import antix.model.SocialMediaPost;
+import antix.model.SocialMediaPost;
 import antix.utils.FeedbackUtils;
 import antix.views.main.PostSelector;
 
@@ -13,18 +14,18 @@ import java.util.function.Supplier;
  * Elle recharge les données depuis un tag par défaut (ex. \"info\").
  */
 public class ResetCommand extends Command {
-    private final Grid<MastodonPost> grid;
-    private final Supplier<List<MastodonPost>> fetcher;
+    private final Grid<SocialMediaPost> grid;
+    private final Supplier<List<SocialMediaPost>> fetcher;
     private final PostSelector selector;
 
     /**
      * Constructeur de la commande Reset.
      *
-     * @param grid       Grille des posts.
-     * @param fetcher    Fonction permettant de récupérer les posts (via API).
+     * @param grid2       Grille des posts.
+     * @param resetFetcher    Fonction permettant de récupérer les posts (via API).
      * @param selector   Sélecteur/afficheur de post.
      */
-    public ResetCommand(Grid<MastodonPost> grid, Supplier<List<MastodonPost>> fetcher, PostSelector selector) {
+    public ResetCommand(Grid<SocialMediaPost> grid2, Supplier<List<SocialMediaPost>> resetFetcher, PostSelector selector) {
         super(
             List.of("reset"),
             "Reset",
@@ -34,8 +35,8 @@ public class ResetCommand extends Command {
             💡 Réinitialise la liste avec les derniers posts du tag par défaut
             """
         );
-        this.grid = grid;
-        this.fetcher = fetcher;
+        this.grid = grid2;
+        this.fetcher = resetFetcher;
         this.selector = selector;
     }
 
@@ -47,7 +48,7 @@ public class ResetCommand extends Command {
      */
     @Override
     public void execute(String input) {
-        List<MastodonPost> posts = fetcher.get();
+        List<SocialMediaPost> posts = fetcher.get();
         grid.setItems(posts);
 
         if (!posts.isEmpty()) {

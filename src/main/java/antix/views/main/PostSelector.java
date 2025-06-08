@@ -1,10 +1,10 @@
 package antix.views.main;
 
-import antix.model.MastodonPost;
+import antix.model.SocialMediaPost;
 
 // Interface fonctionnelle, elle permet de passer une méthode et d'affichage personnalisée
 
 @FunctionalInterface
 public interface PostSelector {
-    void selectAndDisplay(MastodonPost post);
+    void selectAndDisplay(SocialMediaPost post);
 }

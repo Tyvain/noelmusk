@@ -1,6 +1,6 @@
 package antix.views.main.commands;
 
-import antix.model.MastodonPost;
+import antix.model.SocialMediaPost;
 import antix.views.main.PostSelector;
 
 import com.vaadin.flow.component.grid.Grid;
@@ -21,7 +21,7 @@ public class RandCommand extends NavigationCommand {
      * @param grid     Grille affichant les posts.
      * @param selector Permet d'afficher le post sélectionné.
      */
-    public RandCommand(Grid<MastodonPost> grid, PostSelector selector) {
+    public RandCommand(Grid<SocialMediaPost> grid, PostSelector selector) {
         super(
             List.of("rand", "random"),
             "Rand",
@@ -44,7 +44,7 @@ public class RandCommand extends NavigationCommand {
      * @return Un post tiré au sort ou null si la liste est vide.
      */
     @Override
-    protected MastodonPost getTargetPost(List<MastodonPost> items, MastodonPost current) {
+    protected SocialMediaPost getTargetPost(List<SocialMediaPost> items, SocialMediaPost current) {
         return items.isEmpty() ? null : items.get(random.nextInt(items.size()));
     }
 }

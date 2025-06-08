@@ -1,6 +1,6 @@
 package antix.views.main.commands;
 
-import antix.model.MastodonPost;
+import antix.model.SocialMediaPost;
 import antix.views.main.PostSelector;
 import com.vaadin.flow.component.grid.Grid;
 import java.util.List;
@@ -16,7 +16,7 @@ public class BottomCommand extends NavigationCommand {
      * @param grid     Grille contenant les posts à afficher.
      * @param selector Interface permettant d'afficher un post dans l'UI.
      */
-    public BottomCommand(Grid<MastodonPost> grid, PostSelector selector) {
+    public BottomCommand(Grid<SocialMediaPost> grid, PostSelector selector) {
         super(
             List.of("bottom"),
             "Bottom",
@@ -38,7 +38,7 @@ public class BottomCommand extends NavigationCommand {
      * @return Le dernier post de la page, ou null si la liste est vide.
      */
     @Override
-    protected MastodonPost getTargetPost(List<MastodonPost> items, MastodonPost current) {
+    protected SocialMediaPost getTargetPost(List<SocialMediaPost> items, SocialMediaPost current) {
         return items.isEmpty() ? null : items.get(items.size() - 1);
     }
 }

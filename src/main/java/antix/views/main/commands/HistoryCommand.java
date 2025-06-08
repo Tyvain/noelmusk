@@ -1,6 +1,6 @@
 package antix.views.main.commands;
 
-import antix.model.MastodonPost;
+import antix.model.SocialMediaPost;
 import antix.views.main.PostSelector;
 
 import com.vaadin.flow.component.html.Div;
@@ -18,12 +18,12 @@ import java.util.stream.Collectors;
  * - hist <mot-clé> : filtre l’historique contenant le mot-clé
  */
 public class HistoryCommand extends Command {
-    private final Grid<MastodonPost> grid;
+    private final Grid<SocialMediaPost> grid;
     private final PostSelector selector;
     private final List<String> history;
     private final Div contentDiv;
 
-    public HistoryCommand(Grid<MastodonPost> grid,
+    public HistoryCommand(Grid<SocialMediaPost> grid,
                           PostSelector selector,
                           List<String> history,
                           Div contentDiv) {
@@ -49,11 +49,17 @@ public class HistoryCommand extends Command {
         contentDiv.removeAll();
 
         String keyword = input.trim().replaceFirst("^\\S+\\s*", "").toLowerCase();
-        List<String> filtered = keyword.isEmpty()
-                ? history
-                : history.stream()
-                         .filter(cmd -> cmd.toLowerCase().contains(keyword))
-                         .collect(Collectors.toList());
+        List<String> filtered;
+
+        if (keyword.isEmpty()) {
+            // Prendre les 20 dernières commandes (sans inversion)
+            int startIndex = Math.max(0, history.size() - 20);
+            filtered = new ArrayList<>(history.subList(startIndex, history.size()));
+        } else {
+            filtered = history.stream()
+                    .filter(cmd -> cmd.toLowerCase().contains(keyword))
+                    .collect(Collectors.toList());
+        }
 
         Div historyDiv = new Div();
         historyDiv.getStyle().set("white-space", "pre-wrap");

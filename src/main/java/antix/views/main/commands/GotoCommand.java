@@ -1,6 +1,6 @@
 package antix.views.main.commands;
 
-import antix.model.MastodonPost;
+import antix.model.SocialMediaPost;
 import antix.utils.FeedbackUtils;
 import antix.views.main.PostSelector;
 import com.vaadin.flow.component.grid.Grid;
@@ -11,7 +11,7 @@ public class GotoCommand extends NavigationCommand {
 
     private int targetIndex = -1;
 
-    public GotoCommand(Grid<MastodonPost> grid, PostSelector selector) {
+    public GotoCommand(Grid<SocialMediaPost> grid, PostSelector selector) {
         super(
             List.of("g", "goto"),
             "Goto",
@@ -44,7 +44,7 @@ public class GotoCommand extends NavigationCommand {
     }
 
     @Override
-    protected MastodonPost getTargetPost(List<MastodonPost> items, MastodonPost current) {
+    protected SocialMediaPost getTargetPost(List<SocialMediaPost> items, SocialMediaPost current) {
         if (targetIndex < 0 || targetIndex >= items.size()) {
             FeedbackUtils.showError("Index hors limites. Il doit être entre 1 et " + items.size() + ".");
             return null;

@@ -1,6 +1,6 @@
 package antix.views.main.commands;
 
-import antix.model.MastodonPost;
+import antix.model.SocialMediaPost;
 import antix.views.main.PostSelector;
 
 import com.vaadin.flow.component.grid.Grid;
@@ -19,7 +19,7 @@ public class PreviousCommand extends NavigationCommand {
      * @param grid     Grille contenant les posts.
      * @param selector Sélecteur de post pour affichage.
      */
-    public PreviousCommand(Grid<MastodonPost> grid, PostSelector selector) {
+    public PreviousCommand(Grid<SocialMediaPost> grid, PostSelector selector) {
         super(
             List.of("p", "previous"),
             "Previous",
@@ -41,7 +41,7 @@ public class PreviousCommand extends NavigationCommand {
      * @return Le post précédent ou le dernier si aucun n’est sélectionné.
      */
     @Override
-    protected MastodonPost getTargetPost(List<MastodonPost> items, MastodonPost current) {
+    protected SocialMediaPost getTargetPost(List<SocialMediaPost> items, SocialMediaPost current) {
         int index = (current != null) ? items.indexOf(current) : items.size();
         return (index > 0)
                 ? items.get(index - 1)

@@ -5,6 +5,7 @@ import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
 
 import antix.components.CommandCard;
+import antix.utils.FeedbackUtils;
 
 import java.util.*;
 
@@ -62,7 +63,7 @@ public class HelpCommand extends Command {
                 helpDiv.add(new Div(command.getDescription()));
             } else {
                 // Afficher un message d'erreur si la commande n'existe pas
-                helpDiv.add(new Div("Commande inconnue : " + commandName));
+                FeedbackUtils.showMessage("Commande inconnue : " + commandName);
             }
         } else {
             // Si aucune commande spécifique n'est demandée, afficher toutes les commandes

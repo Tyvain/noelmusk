@@ -1,6 +1,6 @@
 package antix.views.main.commands;
 
-import antix.model.MastodonPost;
+import antix.model.SocialMediaPost;
 import antix.utils.FeedbackUtils;
 import antix.views.main.PostSelector;
 
@@ -21,8 +21,8 @@ import java.util.stream.Collectors;
  * - h dev || ai && code !blabla
  */
 public class HashtagCommand extends Command {
-    private final Grid<MastodonPost> grid;
-    private final Function<String, List<MastodonPost>> tagFetcher;
+    private final Grid<SocialMediaPost> grid;
+    private final Function<String, List<SocialMediaPost>> tagFetcher;
     private final PostSelector selector;
 
     /**
@@ -32,8 +32,8 @@ public class HashtagCommand extends Command {
      * @param tagFetcher Fonction de récupération des posts par tag.
      * @param selector   Sélecteur pour afficher un post.
      */
-    public HashtagCommand(Grid<MastodonPost> grid,
-            Function<String, List<MastodonPost>> tagFetcher,
+    public HashtagCommand(Grid<SocialMediaPost> grid,
+            Function<String, List<SocialMediaPost>> tagFetcher,
             PostSelector selector) {
             super(
                 List.of("h", "hashtag"),
@@ -102,10 +102,10 @@ public class HashtagCommand extends Command {
             }
         }
 
-        Set<MastodonPost> result = new HashSet<>();
+        Set<SocialMediaPost> result = new HashSet<>();
 
         if (!andTags.isEmpty()) {
-            List<MastodonPost> baseList = tagFetcher.apply(andTags.iterator().next());
+            List<SocialMediaPost> baseList = tagFetcher.apply(andTags.iterator().next());
             result = baseList.stream()
                     .filter(post -> {
                         Set<String> lowerTags = post.getTags().stream()
@@ -117,7 +117,7 @@ public class HashtagCommand extends Command {
         }
 
         if (!orTags.isEmpty()) {
-            Set<MastodonPost> orResults = new HashSet<>();
+            Set<SocialMediaPost> orResults = new HashSet<>();
             for (String tag : orTags) {
                 orResults.addAll(tagFetcher.apply(tag));
             }
@@ -140,15 +140,14 @@ public class HashtagCommand extends Command {
 
         for (String filter : filters) {
             if (filter.startsWith("likes:")) {
-                result = applyNumericFilter(result, filter.substring(6), MastodonPost::getFavouritesCount);
+                result = applyNumericFilter(result, filter.substring(6), SocialMediaPost::getLikeCount);
             } else if (filter.startsWith("reposts:")) {
-                result = applyNumericFilter(result, filter.substring(8), MastodonPost::getReblogsCount);
+                result = applyNumericFilter(result, filter.substring(8), SocialMediaPost::getShareCount);
             }
         }
 
-        List<MastodonPost> finalList = result.stream()
-                .limit(40)
-                .sorted(Comparator.comparing(MastodonPost::getId).reversed())
+        List<SocialMediaPost> finalList = result.stream()
+                .sorted(Comparator.comparing(SocialMediaPost::getId).reversed())
                 .collect(Collectors.toList());
 
         if (finalList.isEmpty()) {
@@ -165,11 +164,11 @@ public class HashtagCommand extends Command {
      *
      * @param posts     Ensemble de posts à filtrer.
      * @param condition Condition au format texte, ex: >5
-     * @param extractor Fonction d’extraction du champ numérique.
+     * @param extractor Fonction d'extraction du champ numérique.
      * @return Sous-ensemble filtré.
      */
-    private Set<MastodonPost> applyNumericFilter(Set<MastodonPost> posts, String condition,
-            Function<MastodonPost, Integer> extractor) {
+    private Set<SocialMediaPost> applyNumericFilter(Set<SocialMediaPost> posts, String condition,
+            Function<SocialMediaPost, Integer> extractor) {
         char operator = condition.charAt(0);
         int value;
         try {

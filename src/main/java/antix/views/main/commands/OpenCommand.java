@@ -5,6 +5,7 @@ import antix.utils.FeedbackUtils;
 
 import java.util.List;
 
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.textfield.TextField;
@@ -13,7 +14,7 @@ import com.vaadin.flow.component.textfield.TextField;
  * Commande permettant de copier le lien d’un post sélectionné.
  * Le lien est automatiquement copié dans le presse-papiers.
  */
-public class LinkCommand extends Command {
+public class OpenCommand extends Command {
     private final Grid<SocialMediaPost> grid;
     private final Div contentDiv;
 
@@ -23,14 +24,14 @@ public class LinkCommand extends Command {
      * @param grid        Grille des posts.
      * @param contentDiv  Zone d'affichage secondaire (feedback lien).
      */
-    public LinkCommand(Grid<SocialMediaPost> grid, Div contentDiv) {
+    public OpenCommand(Grid<SocialMediaPost> grid, Div contentDiv) {
         super(
-            List.of("l", "link"),
-            "Link",
+            List.of("o", "open"),
+            "Open",
             """
-            🔗 l / link
+            🔗 o / open
         
-            💡 Copier le lien du post sélectionné dans le presse-papier
+            💡 Ouvre le post sélectionné dans un nouvel onglet
             """
         );
         this.grid = grid;
@@ -44,22 +45,12 @@ public class LinkCommand extends Command {
      */
     @Override
     public void execute(String input) {
-        contentDiv.removeAll();
         SocialMediaPost post = grid.getSelectedItems().stream().findFirst().orElse(null);
 
         if (post != null) {
             String url = post.getUrl();
-
-            TextField linkField = new TextField("Lien du post");
-            linkField.setValue(url);
-            linkField.setReadOnly(true);
-            linkField.setWidthFull();
-            linkField.focus();
-
-            linkField.getElement().executeJs("navigator.clipboard.writeText($0)", url);
-
-            contentDiv.add(linkField);
-            FeedbackUtils.showSuccess("Lien copié dans le presse-papiers !");
+            UI.getCurrent().getPage().open(url,"_blank");
+            FeedbackUtils.showSuccess("Post ouvert dans un nouvel onglet.");
         } else {
             FeedbackUtils.showError("Aucun post sélectionné pour générer un lien.");
         }

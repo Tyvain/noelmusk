@@ -1,6 +1,6 @@
 package antix.views.main.commands;
 
-import antix.model.MastodonPost;
+import antix.model.SocialMediaPost;
 import antix.utils.FeedbackUtils;
 import antix.utils.GridUtils;
 import antix.views.main.PostSelector;
@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
  * Exemple : c "pouvoir"
  */
 public class ContentSearchCommand extends Command {
-    private final Grid<MastodonPost> grid;
+    private final Grid<SocialMediaPost> grid;
     private final PostSelector selector;
 
     /**
@@ -25,7 +25,7 @@ public class ContentSearchCommand extends Command {
      * @param grid        Grille contenant les posts.
      * @param selector    Sélecteur de post pour mise en avant.
      */
-    public ContentSearchCommand(Grid<MastodonPost> grid, PostSelector selector) {
+    public ContentSearchCommand(Grid<SocialMediaPost> grid, PostSelector selector) {
         super(
             List.of("c"),
             "Content Search",
@@ -52,7 +52,7 @@ public class ContentSearchCommand extends Command {
             return;
         }
 
-        List<MastodonPost> filtered = GridUtils.fetchAll(grid).stream()
+        List<SocialMediaPost> filtered = GridUtils.fetchAll(grid).stream()
                 .filter(post -> Jsoup.parse(post.getContent()).text().toLowerCase().contains(query))
                 .collect(Collectors.toList());
 

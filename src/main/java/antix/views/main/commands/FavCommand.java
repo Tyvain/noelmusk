@@ -1,6 +1,6 @@
 package antix.views.main.commands;
 
-import antix.model.MastodonPost;
+import antix.model.SocialMediaPost;
 import antix.utils.FeedbackUtils;
 
 import com.vaadin.flow.component.grid.Grid;
@@ -12,8 +12,8 @@ import java.util.List;
  * Le post sélectionné est ajouté s’il n’est pas déjà présent.
  */
 public class FavCommand extends Command {
-    private final Grid<MastodonPost> grid;
-    private final List<MastodonPost> favoris;
+    private final Grid<SocialMediaPost> grid;
+    private final List<SocialMediaPost> favoris;
 
     /**
      * Constructeur de la commande Fav.
@@ -21,7 +21,7 @@ public class FavCommand extends Command {
      * @param grid    Grille contenant les posts.
      * @param favoris Liste des posts favoris (locale).
      */
-    public FavCommand(Grid<MastodonPost> grid, List<MastodonPost> favoris) {
+    public FavCommand(Grid<SocialMediaPost> grid, List<SocialMediaPost> favoris) {
         super(
             List.of("f", "fav"),
             "Favoris",
@@ -43,7 +43,7 @@ public class FavCommand extends Command {
      */
     @Override
     public void execute(String input) {
-        MastodonPost selectedPost = grid.getSelectedItems().stream().findFirst().orElse(null);
+        SocialMediaPost selectedPost = grid.getSelectedItems().stream().findFirst().orElse(null);
 
         if (selectedPost == null) {
             FeedbackUtils.showError("Aucun post sélectionné pour ajouter aux favoris.");
