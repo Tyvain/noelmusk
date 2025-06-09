@@ -1,3 +1,4 @@
+// MainView.java corrigé avec gestion propre des variables dans les lambdas
 package antix.views.main;
 
 import antix.model.MastodonPost;
@@ -32,6 +33,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
 
 @PageTitle("main")
@@ -42,16 +44,20 @@ public class MainView extends VerticalLayout {
         setAlignItems(Alignment.CENTER);
         var grid = new Grid<>(MastodonPost.class, false);
         grid.setSelectionMode(Grid.SelectionMode.SINGLE);
-
+        grid.setDetailsVisibleOnClick(false); 
         var contentDiv = new Div();
         contentDiv.setWidthFull();
 
         addRepliesColumn(grid);
         addContentColumn(grid);
+        grid.addColumn(MastodonPost::getSource).setHeader("Src").setAutoWidth(true);
+        grid.addColumn(p -> Optional.ofNullable(p.getLikes()).orElse(0)).setHeader("Likes").setAutoWidth(true);
+        grid.addColumn(p -> Optional.ofNullable(p.getComments()).orElse(0)).setHeader("Comm").setAutoWidth(true);
+        grid.addColumn(p -> Optional.ofNullable(p.getShares()).orElse(0)).setHeader("Partages").setAutoWidth(true);
 
         grid.setItemDetailsRenderer(new ComponentRenderer<>(post -> new Div(Jsoup.parse(post.getContent()).text())));
         grid.addSelectionListener(event -> selectItemListener(grid, contentDiv, event));
-        grid.setDetailsVisibleOnClick(false);
+        // grid.setDetailsVisibleOnClick(false);
 
         AtomicBoolean internalChange = new AtomicBoolean(false);
         var prompt = new TextField();
@@ -76,38 +82,84 @@ public class MainView extends VerticalLayout {
                 text = text.replace(sinceMatcher.group(0), "").trim();
             }
 
-            if (text.startsWith("hashtag ") || text.startsWith("# ")) {
-                String tag = text.substring(1).trim();
-                List<MastodonPost> posts = fetchPostsFromTag(tag);
+            int minutesSince = -1;
+            Matcher minuteMatcher = Pattern.compile("\\*minute\\((\\d+)\\)").matcher(text);
+            if (minuteMatcher.find()) {
+                minutesSince = Integer.parseInt(minuteMatcher.group(1));
+                text = text.replace(minuteMatcher.group(0), "").trim();
+            }
 
-                if (daysSince > 0) {
-                    ZonedDateTime threshold = ZonedDateTime.now().minusDays(daysSince);
-                    posts = posts.stream().filter(p -> p.getCreatedAt() != null && p.getCreatedAt().isAfter(threshold)).collect(Collectors.toList());
-                }
+            if (text.equals("?")) {
+                grid.setItems(List.of());
+                Div help = new Div();
+                help.setText(String.join("\n",
+                        "Instructions :",
+                        "#mot — recherche tag Mastodon et web Google\n\n",
+                        "#M — recherche Mastodon uniquement",
+                        "#GN — recherche Google News uniquement",
+                        "*date(N) — limite aux N plus récents",
+                        "*depuis(N) — depuis N jours",
+                        "*minute(N) — depuis N minutes",
+                        "/select — affiche le 1er post",
+                        "/select N — affiche le Nᵉ post",
+                        "? — affiche cette aide",
+                        "/open N — ouvre le Nᵉ post dans un nouvel onglet"
+                ));
+                contentDiv.removeAll();
+                contentDiv.add(help);
+                return;
+            }
 
-                if (dateLimit > 0) {
-                    posts = posts.stream().sorted(Comparator.comparing(MastodonPost::getCreatedAt).reversed()).limit(dateLimit).collect(Collectors.toList());
-                }
-
-                grid.setItems(posts);
-                grid.getDataProvider().fetch(new Query<>()).findFirst().ifPresent(grid::select);
-
-            } else if (text.startsWith("arobase ") || text.startsWith("@ ")) {
+            if (text.startsWith("#")) {
                 String query = text.substring(1).trim();
-                List<MastodonPost> searchResults = fetchPostsFromExternalSearch(query);
+                List<MastodonPost> results = new ArrayList<>();
+                if (query.equalsIgnoreCase("M")) {
+                    results.addAll(fetchPostsFromTag("mastodon"));
+                } else if (query.equalsIgnoreCase("GN")) {
+                    results.addAll(fetchPostsFromExternalSearch("site:news.google.com"));
+                } else {
+                    results.addAll(fetchPostsFromTag(query));
+                    results.addAll(fetchPostsFromExternalSearch(query));
+                }
 
+                List<MastodonPost> filteredByDay = results;
                 if (daysSince > 0) {
                     ZonedDateTime threshold = ZonedDateTime.now().minusDays(daysSince);
-                    searchResults = searchResults.stream().filter(p -> p.getCreatedAt() != null && p.getCreatedAt().isAfter(threshold)).collect(Collectors.toList());
+                    filteredByDay = filteredByDay.stream()
+                        .filter(p -> p.getCreatedAt() != null && p.getCreatedAt().isAfter(threshold))
+                        .collect(Collectors.toList());
                 }
 
+                List<MastodonPost> filteredByMinute = filteredByDay;
+                if (minutesSince > 0) {
+                    ZonedDateTime threshold = ZonedDateTime.now().minusMinutes(minutesSince);
+                    filteredByMinute = filteredByMinute.stream()
+                        .filter(p -> p.getCreatedAt() != null && p.getCreatedAt().isAfter(threshold))
+                        .collect(Collectors.toList());
+                }
+
+                List<MastodonPost> limited = filteredByMinute;
                 if (dateLimit > 0) {
-                    searchResults = searchResults.stream().sorted(Comparator.comparing(MastodonPost::getCreatedAt).reversed()).limit(dateLimit).collect(Collectors.toList());
+                    limited = limited.stream()
+                        .sorted(Comparator.comparing(MastodonPost::getCreatedAt).reversed())
+                        .limit(dateLimit)
+                        .collect(Collectors.toList());
                 }
 
-                grid.setItems(searchResults);
-                grid.getDataProvider().fetch(new Query<>()).findFirst().ifPresent(grid::select);
+                List<MastodonPost> safeLimited = limited; // "effectively final"
+                List<MastodonPost> paginated = IntStream.range(0, safeLimited.size())
+                    .mapToObj(i -> {
+                        MastodonPost p = safeLimited.get(i);
+                        String originalContent = Jsoup.parse(p.getContent()).text();
+                        p.setContent("#" + (i + 1) + " — " + StringUtils.abbreviate(originalContent, 100));
+                        return p;
+                    }).collect(Collectors.toList());
 
+
+
+
+                grid.setItems(paginated);
+                grid.getDataProvider().fetch(new Query<>()).findFirst().ifPresent(grid::select);
             } else if (text.startsWith("/select")) {
                 List<MastodonPost> items = grid.getDataProvider().fetch(new Query<>()).collect(Collectors.toList());
                 int index = 0;
@@ -118,13 +170,26 @@ public class MainView extends VerticalLayout {
                 if (!items.isEmpty() && index < items.size()) {
                     grid.select(items.get(index));
                 }
-            } else if (text.equals("?")) {
-                grid.setItems(List.of());
-                Div help = new Div();
-                help.setText("Instructions :\n# mot — recherche par tag\n@ mot — recherche web\n*date(N) — limite aux N plus récents\n*depuis(N) — depuis N jours\n/select — affiche le 1er post\n/select N — affiche le Nᵉ post\n? — affiche cette aide");
-                contentDiv.removeAll();
-                contentDiv.add(help);
+            } else if (text.startsWith("/open")) {
+                List<MastodonPost> items = grid.getDataProvider().fetch(new Query<>()).collect(Collectors.toList());
+                int index = 0;
+                Matcher m = Pattern.compile("/open\\s+(\\d+)").matcher(text);
+                if (m.find()) {
+                    index = Math.max(0, Integer.parseInt(m.group(1)) - 1);
+                }
+                if (!items.isEmpty() && index < items.size()) {
+                    MastodonPost post = items.get(index);
+                    String url = post.getExternalUrl();
+                    System.out.println("Trying to open URL: " + url); // ✅ POUR DEBUG
+                    if (url != null && !url.isBlank()) {
+                        prompt.getElement().executeJs("window.open($0, '_blank')", url);
+                    } else {
+                        System.out.println("Aucun lien externe trouvé pour ce post.");
+                    }
+                }
+
             }
+
 
             internalChange.set(true);
             prompt.setValue("");
@@ -150,7 +215,6 @@ public class MainView extends VerticalLayout {
             }
         });
 
-        // 🧱 Affichage layout
         grid.setHeight("100%");
         grid.setWidth("50%");
 
@@ -159,6 +223,7 @@ public class MainView extends VerticalLayout {
 
         var horizontalLayout = new HorizontalLayout(grid, contentDiv);
         horizontalLayout.setSizeFull();
+        
         add(horizontalLayout);
 
         var promptContainer = new VerticalLayout(prompt);
@@ -168,18 +233,6 @@ public class MainView extends VerticalLayout {
 
         setFlexGrow(1, horizontalLayout);
         setFlexGrow(0, promptContainer);
-
-        getElement().executeJs("""
-            document.body.style.pointerEvents = 'none';
-            const allowed = ['input', 'textarea', 'vaadin-text-field'];
-            document.querySelectorAll('*').forEach(el => {
-                if (allowed.includes(el.tagName.toLowerCase()) || el.closest('vaadin-text-field')) {
-                    el.style.pointerEvents = 'auto';
-                }
-            });
-        """);
-        grid.getElement().executeJs("this.addEventListener('click', e => e.preventDefault());");
-        grid.getElement().executeJs("this.addEventListener('mousedown', e => e.preventDefault());");
     }
 
     private void selectItemListener(Grid<MastodonPost> grid, Div contentDiv, SelectionEvent<Grid<MastodonPost>, MastodonPost> event) {
@@ -193,7 +246,7 @@ public class MainView extends VerticalLayout {
             if (post.getCreatedAt() != null) {
                 var formatter = DateTimeFormatter.ofPattern("dd MMM yyyy à HH:mm").withLocale(Locale.FRENCH);
                 String dateText = post.getCreatedAt().format(formatter);
-                Span span = new Span("🗓️ Publié le : " + dateText);
+                Span span = new Span("\uD83D\uDCC5 Publié le : " + dateText);
                 span.getStyle().set("font-size", "0.8em").set("color", "gray").set("margin-top", "1em");
                 container.add(span);
             }
@@ -205,11 +258,11 @@ public class MainView extends VerticalLayout {
     }
 
     private void addRepliesColumn(Grid<MastodonPost> grid) {
-        grid.addColumn(MastodonPost::getRepliesCount).setHeader("Réponses").setAutoWidth(true);
+        // grid.addColumn(MastodonPost::getRepliesCount).setHeader("Réponses").setAutoWidth(true);
     }
 
     private void addContentColumn(Grid<MastodonPost> grid) {
-        grid.addColumn(post -> StringUtils.left(Jsoup.parse(post.getContent()).text(), 150)).setHeader("Contenu").setAutoWidth(true);
+        grid.addColumn(post -> StringUtils.left(Jsoup.parse(post.getContent()).text(), 50)).setHeader("Contenu").setAutoWidth(true);
     }
 
     private void closeAll(Grid<MastodonPost> grid) {
@@ -230,7 +283,16 @@ public class MainView extends VerticalLayout {
             reader.close();
             ObjectMapper mapper = new ObjectMapper();
             mapper.registerModule(new JavaTimeModule());
-            return Arrays.stream(mapper.readValue(response.toString(), MastodonPost[].class)).toList();
+            List<MastodonPost> list = Arrays.stream(mapper.readValue(response.toString(), MastodonPost[].class)).collect(Collectors.toList());
+            list.forEach(p -> {
+                p.setSource("Ma");
+                p.setLikes(p.getFavouritesCount());
+                p.setShares(p.getReblogsCount());
+                p.setExternalUrl(p.getUrl()); ;
+                System.out.println("Mastodon URL: " + p.getUrl());
+
+            });
+            return list;
         } catch (IOException | URISyntaxException e) {
             throw new RuntimeException(e);
         }
@@ -262,7 +324,7 @@ public class MainView extends VerticalLayout {
             if (results == null) return List.of();
 
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.FRENCH);
-            Pattern datePattern = Pattern.compile("^(\\d{1,2} \\p{L}+ \\d{4})\\s+[–-]");
+            Pattern datePattern = Pattern.compile("^(\\d{1,2} \\p{L}+ \\d{4})\\s+[\u2013-]");
 
             return StreamSupport.stream(results.spliterator(), false).map(result -> {
                 MastodonPost post = new MastodonPost();
@@ -270,7 +332,9 @@ public class MainView extends VerticalLayout {
                 String snippet = result.path("snippet").asText("");
                 String link = result.path("link").asText("");
                 post.setContent("<b>" + title + "</b><br><i>" + snippet + "</i><br><a href='" + link + "' target='_blank'>" + link + "</a>");
+                post.setExternalUrl(link); 
                 post.setRepliesCount(0);
+                post.setSource("Go");
 
                 ZonedDateTime createdAt = null;
                 Matcher matcher = datePattern.matcher(snippet);
@@ -278,8 +342,7 @@ public class MainView extends VerticalLayout {
                     try {
                         var parsed = formatter.parse(matcher.group(1));
                         createdAt = ZonedDateTime.of(java.time.LocalDate.from(parsed).atTime(12, 0), java.time.ZoneId.systemDefault());
-                    } catch (Exception ignored) {
-                    }
+                    } catch (Exception ignored) {}
                 }
                 if (createdAt == null) {
                     createdAt = ZonedDateTime.now().minusDays(new Random().nextInt(7)).withHour(new Random().nextInt(24)).withMinute(new Random().nextInt(60));

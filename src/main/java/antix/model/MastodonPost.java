@@ -66,4 +66,21 @@ public class MastodonPost {
     private List<Mention> mentions;
     private Application application;
     private Card card;
+
+    // ✅ Champs ajoutés pour les besoins de l'interface
+    private String source;           // "Mastodon" ou "Google"
+    private Integer likes;           // Nombre de likes (pour Google, laissé à null ou 0)
+    private Integer comments;        // Nombre de commentaires (optionnel)
+    private Integer shares;          // Nombre de partages (optionnel)
+
+    // ✅ Champ ajouté pour /open (Google uniquement)
+    private String externalUrl;
+
+    public String getExternalUrl() {
+        return externalUrl;
+    }
+
+    public void setExternalUrl(String externalUrl) {
+        this.externalUrl = externalUrl;
+    }
 }
